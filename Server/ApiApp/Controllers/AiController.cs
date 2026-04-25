@@ -49,7 +49,8 @@ public class AiController : ControllerBase
             {
                 ok = false,
                 message = "AWS Bedrock request failed. Check model access, region, credentials, and guardrail settings.",
-                aws_error = ex.ErrorCode
+                aws_error = ex.ErrorCode,
+                detail = ex.Message
             });
         }
         catch (AmazonClientException ex)
@@ -116,6 +117,7 @@ public class AiController : ControllerBase
                 ok = false,
                 message = "AWS Bedrock request failed. Check model access, region, credentials, and guardrail settings.",
                 aws_error = ex.ErrorCode,
+                detail = ex.Message,
                 risk.Score,
                 risk.Level,
                 risk.Reasons
@@ -142,6 +144,71 @@ public class AiController : ControllerBase
             message = aiMessage
         });
     }
+
+    [HttpPost("tax-relief")]
+    public async Task<IActionResult> TaxRelief([FromBody] TaxReliefRequest req)
+    {
+        var expenseLines = req.Expenses is { Count: > 0 }
+            ? string.Join("\n", req.Expenses.Select(e =>
+                $"- {e.Category}: RM{e.Amount}. Notes: {e.Notes ?? "none"}"))
+            : "No expense items provided.";
+
+        var prompt = $"""
+        You are a Malaysian personal tax relief assistant for individual taxpayers.
+        Give practical tax relief guidance, but do not provide official tax, legal, or filing advice.
+        Do not ask for passwords, OTP, banking credentials, or IC scans.
+        If a rule, limit, or eligibility condition may change by year of assessment, tell the user to verify it with LHDN.
+
+        User tax profile:
+        Year of assessment: {req.YearOfAssessment}
+        Annual income: RM{req.AnnualIncome}
+        Employment type: {req.EmploymentType ?? "not provided"}
+        Marital status: {req.MaritalStatus ?? "not provided"}
+        Children/dependents: {req.Dependents}
+        Disabled taxpayer/spouse/dependent: {req.HasDisability}
+        Has spouse with no income: {req.HasSpouseWithNoIncome}
+        Zakat/fitrah paid: RM{req.ZakatOrFitrah}
+        Donations/gifts: RM{req.Donations}
+
+        Claimed or possible expenses:
+        {expenseLines}
+
+        User question or notes:
+        {req.Notes ?? "none"}
+
+        Return a concise response with:
+        1. likely Malaysian tax relief categories to check
+        2. expenses that may need receipts or proof
+        3. missing information to ask the user
+        4. warnings about items that may not qualify
+        5. next action checklist before filing
+        """;
+
+        try
+        {
+            var result = await _ai.AskAsync(prompt);
+            return Ok(new { message = result });
+        }
+        catch (AmazonServiceException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                ok = false,
+                message = "AWS Bedrock request failed. Check model access, region, credentials, and guardrail settings.",
+                aws_error = ex.ErrorCode,
+                detail = ex.Message
+            });
+        }
+        catch (AmazonClientException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                ok = false,
+                message = "AWS credentials or Bedrock client configuration is missing or invalid.",
+                detail = ex.Message
+            });
+        }
+    }
 }
 
 public record AiInsightRequest(
@@ -159,4 +226,24 @@ public record ScamCheckRequest(
     bool IsNewReceiver,
     int TransferCountToday,
     string? Note
+);
+
+public record TaxReliefRequest(
+    int YearOfAssessment,
+    decimal AnnualIncome,
+    string? EmploymentType,
+    string? MaritalStatus,
+    int Dependents,
+    bool HasDisability,
+    bool HasSpouseWithNoIncome,
+    decimal ZakatOrFitrah,
+    decimal Donations,
+    List<TaxReliefExpense>? Expenses,
+    string? Notes
+);
+
+public record TaxReliefExpense(
+    string Category,
+    decimal Amount,
+    string? Notes
 );
