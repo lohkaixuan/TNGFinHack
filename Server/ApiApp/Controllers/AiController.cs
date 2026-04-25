@@ -1,3 +1,4 @@
+using Amazon.Runtime;
 using ApiApp.AI;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,8 +38,29 @@ public class AiController : ControllerBase
         3. risk warning if needed
         """;
 
-        var result = await _ai.AskAsync(prompt);
-        return Ok(new { message = result });
+        try
+        {
+            var result = await _ai.AskAsync(prompt);
+            return Ok(new { message = result });
+        }
+        catch (AmazonServiceException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                ok = false,
+                message = "AWS Bedrock request failed. Check model access, region, credentials, and guardrail settings.",
+                aws_error = ex.ErrorCode
+            });
+        }
+        catch (AmazonClientException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                ok = false,
+                message = "AWS credentials or Bedrock client configuration is missing or invalid.",
+                detail = ex.Message
+            });
+        }
     }
 
     [HttpPost("scam-check")]
@@ -82,7 +104,35 @@ public class AiController : ControllerBase
         3. safest next action
         """;
 
-        var aiMessage = await _ai.AskAsync(prompt);
+        string aiMessage;
+        try
+        {
+            aiMessage = await _ai.AskAsync(prompt);
+        }
+        catch (AmazonServiceException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                ok = false,
+                message = "AWS Bedrock request failed. Check model access, region, credentials, and guardrail settings.",
+                aws_error = ex.ErrorCode,
+                risk.Score,
+                risk.Level,
+                risk.Reasons
+            });
+        }
+        catch (AmazonClientException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                ok = false,
+                message = "AWS credentials or Bedrock client configuration is missing or invalid.",
+                detail = ex.Message,
+                risk.Score,
+                risk.Level,
+                risk.Reasons
+            });
+        }
 
         return Ok(new
         {

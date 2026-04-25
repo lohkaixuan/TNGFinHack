@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : ResponseHelpher.cs
-// Purpose        : Builds standardized API responses
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApiApp.Helpers;

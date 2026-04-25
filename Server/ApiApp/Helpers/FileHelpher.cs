@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : FileHelpher.cs
-// Purpose        : File handling helper methods
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 namespace ApiApp.Helpers;
 public static class FileStorage
 {

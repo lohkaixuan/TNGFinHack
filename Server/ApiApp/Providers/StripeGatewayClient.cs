@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : StripeGatewayClient.cs
-// Purpose        : Stripe payment gateway client implementation
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using ApiApp.Models;
+﻿using ApiApp.Models;
 using Stripe;
 using Stripe.Checkout;
 using System.Text.Json;

@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : 20251217010352_AddBankLinkTokenColumns.cs
-// Purpose        : EF Core migration adding bank link token columns
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : 20251126160422_adminProviderMitigate.Designer.cs
-// Purpose        : EF Core migration designer for admin provider mitigation changes
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using System;
+﻿using System;
 using ApiApp.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;

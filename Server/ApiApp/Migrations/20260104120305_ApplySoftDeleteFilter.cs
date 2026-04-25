@@ -1,13 +1,4 @@
-// ==================================================
-// Program Name   : 20260104120305_ApplySoftDeleteFilter.cs
-// Purpose        : EF Core migration for applying soft delete filter and provider user link
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

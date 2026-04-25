@@ -1,6 +1,7 @@
 using Amazon;
 using Amazon.BedrockRuntime;
 using Amazon.BedrockRuntime.Model;
+using Amazon.Runtime;
 
 namespace ApiApp.AI;
 
@@ -19,9 +20,18 @@ public class BedrockAiService : IAiService
         _guardrailId = config["AWS:GuardrailId"];
         _guardrailVersion = config["AWS:GuardrailVersion"] ?? "DRAFT";
 
-        _bedrock = new AmazonBedrockRuntimeClient(
-            RegionEndpoint.GetBySystemName(region)
-        );
+        var regionEndpoint = RegionEndpoint.GetBySystemName(region);
+        var accessKeyId = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
+        var secretAccessKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
+        var sessionToken = Environment.GetEnvironmentVariable("AWS_SESSION_TOKEN");
+
+        _bedrock = !string.IsNullOrWhiteSpace(accessKeyId) &&
+                   !string.IsNullOrWhiteSpace(secretAccessKey) &&
+                   !string.IsNullOrWhiteSpace(sessionToken)
+            ? new AmazonBedrockRuntimeClient(
+                new SessionAWSCredentials(accessKeyId, secretAccessKey, sessionToken),
+                regionEndpoint)
+            : new AmazonBedrockRuntimeClient(regionEndpoint);
     }
 
     public async Task<string> AskAsync(string prompt)

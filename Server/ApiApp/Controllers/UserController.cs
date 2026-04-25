@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : UserController.cs
-// Purpose        : API endpoints for user management
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

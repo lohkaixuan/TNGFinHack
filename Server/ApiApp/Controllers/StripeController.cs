@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : StripeController.cs
-// Purpose        : Stripe webhook and payment endpoints
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
