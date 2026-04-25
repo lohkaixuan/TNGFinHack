@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : AppDbSeeder.cs
-// Purpose        : Seeds initial data into the database
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace ApiApp.Models;
 
@@ -244,33 +235,6 @@ public static class AppDbSeeder
         var owner1Bank = await ensureUserBank(merchantOwner1, "9001 00 000116", "CIMB", 2000m);
         var owner2Bank = await ensureUserBank(merchantOwner2, "9001 00 000117", "Maybank", 1800m);
         var owner3Bank = await ensureUserBank(merchantOwner3, "9001 00 000118", "RHB", 1600m);
-        // ===== budgets for 3 months =====
-        async Task SeedBudgetsForUser(User u, decimal food, decimal groceries)
-        {
-            foreach (var (s, e) in new[] {
-                (startPrev2Utc, endPrev2Utc),   // 2 months ago
-                (startPrev1Utc, endPrev1Utc),   // last month
-                (startThisUtc,   endThisUtc)    // this month
-            })
-            {
-                await UpsertMonthlyBudgetsAsync(db, u.UserId, s, e, new(){
-                    { "TopUp", 0m },
-                    { "Food", food },
-                    { "Groceries", groceries },
-                    { "Transport", 200m },
-                    { "Bills", 250m },
-                    { "Entertainment", 150m }
-                });
-            }
-        }
-
-        var budgetUsers = new[]{
-            user1, user2, user3, user4, user5,
-            merchantOwner1, merchantOwner2, merchantOwner3
-        };
-
-        foreach (var u in budgetUsers)
-            await SeedBudgetsForUser(u, 300m, 400m);
 
         // ========== Txn helpers with timestamp ==========
 
@@ -336,7 +300,7 @@ public static class AppDbSeeder
                 transaction_status = "success",
                 transaction_item = item,
                 transaction_detail = detail,
-                category = "Food",
+                category = "FoodGroceries",
                 transaction_timestamp = ts
             };
             Touch(t);
@@ -540,38 +504,4 @@ public static class AppDbSeeder
         return e;
     }
 
-    private static async Task UpsertMonthlyBudgetsAsync(
-        AppDbContext db, Guid userId,
-        DateTime startUtc, DateTime endUtc,
-        Dictionary<string, decimal> caps)
-    {
-        foreach (var (cat, limit) in caps)
-        {
-            var b = await db.Budgets.FirstOrDefaultAsync(x =>
-                x.UserId == userId &&
-                x.Category == cat &&
-                x.CycleStart == startUtc &&
-                x.CycleEnd == endUtc
-            );
-            if (b == null)
-            {
-                b = new Budget
-                {
-                    UserId = userId,
-                    Category = cat,
-                    LimitAmount = limit,
-                    CycleStart = startUtc,
-                    CycleEnd = endUtc
-                };
-                Touch(b);
-                db.Budgets.Add(b);
-            }
-            else
-            {
-                b.LimitAmount = limit;
-                Touch(b);
-            }
-        }
-        await db.SaveChangesAsync();
-    }
 }

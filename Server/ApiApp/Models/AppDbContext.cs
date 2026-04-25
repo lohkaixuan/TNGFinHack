@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : AppDbContext.cs
-// Purpose        : Entity Framework Core DbContext configuration
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using System.Reflection;
+﻿using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApiApp.Models
@@ -23,6 +14,7 @@ namespace ApiApp.Models
         public DbSet<BankAccount> BankAccounts => Set<BankAccount>();
         public DbSet<Wallet> Wallets => Set<Wallet>();
         public DbSet<Transaction> Transactions => Set<Transaction>();
+        public DbSet<UserBehaviorProfile> UserBehaviorProfiles => Set<UserBehaviorProfile>();
 
         // New tables
         public DbSet<Budget> Budgets => Set<Budget>();
@@ -60,6 +52,7 @@ namespace ApiApp.Models
             modelBuilder.Entity<BankAccount>().ToTable("bank_accounts");
             modelBuilder.Entity<Wallet>().ToTable("wallets");
             modelBuilder.Entity<Transaction>().ToTable("transactions");
+            modelBuilder.Entity<UserBehaviorProfile>().ToTable("user_behavior_profiles");
             modelBuilder.Entity<Budget>().ToTable("budgets");
             modelBuilder.Entity<Provider>().ToTable("providers");
             modelBuilder.Entity<ProviderCredential>().ToTable("provider_credentials");
@@ -132,6 +125,12 @@ namespace ApiApp.Models
                 .HasOne(u => u.Role)
                 .WithMany(r => r.Users)
                 .HasForeignKey(u => u.RoleId);
+
+            modelBuilder.Entity<UserBehaviorProfile>()
+                .HasOne(p => p.User)
+                .WithOne()
+                .HasForeignKey<UserBehaviorProfile>(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // User  BankAccounts 1..n (delete user => delete accounts)
             modelBuilder.Entity<BankAccount>()

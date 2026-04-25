@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : AuthController.cs
-// Purpose        : Authentication endpoints for login and token issuing
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using System.IO;
+﻿using System.IO;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

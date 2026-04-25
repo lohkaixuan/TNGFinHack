@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : 20251217011318_FixBankLinkExternalRawJsonType.cs
-// Purpose        : EF Core migration to fix BankLink external raw JSON type
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

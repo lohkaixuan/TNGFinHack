@@ -1,13 +1,4 @@
-﻿// ==================================================
-// Program Name   : Program.cs
-// Purpose        : Configures and starts the ASP.NET Core API application
-// Developer      : Mr. Loh Kai Xuan 
-// Student ID     : TP074510 
-// Course         : Bachelor of Software Engineering (Hons) 
-// Created Date   : 15 November 2025
-// Last Modified  : 4 January 2026 
-// ==================================================
-using Amazon;
+﻿using Amazon;
 using Amazon.S3;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -36,7 +27,9 @@ var dbConn = !string.IsNullOrWhiteSpace(rdsConn)
     : neonConn ?? throw new InvalidOperationException("NEON_CONN or RDS_CONN is not set");
 var aesKey = Environment.GetEnvironmentVariable("AES_KEY")
             ?? throw new InvalidOperationException("AES_KEY is not set");
+var bedrocktoken = Environment.GetEnvironmentVariable("AWS_BedrockToken");
 builder.Configuration["Crypto:AesKey"] = aesKey;
+builder.Configuration["AWS:BedrockToken"] = bedrocktoken;
 
 var isRender =
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER")) ||
@@ -47,17 +40,21 @@ var isEc2 =
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_EXECUTION_ENV"));
 
 var s3Bucket = Environment.GetEnvironmentVariable("S3_BUCKET");
-var s3Region = Environment.GetEnvironmentVariable("S3_REGION") ?? "us-east-1";
+var awsRegion = builder.Configuration["AWS:Region"] ?? "ap-southeast-1";
 var s3ReportPrefix = Environment.GetEnvironmentVariable("S3_REPORT_PREFIX") ?? "reports/";
 var enableS3 = isEc2 && !string.IsNullOrWhiteSpace(s3Bucket);
 builder.Configuration["S3:Bucket"] = s3Bucket ?? "";
-builder.Configuration["S3:Region"] = s3Region;
+builder.Configuration["S3:Region"] = awsRegion;
 builder.Configuration["S3:ReportPrefix"] = s3ReportPrefix;
 
 var isDev = builder.Environment.IsDevelopment();
 var seedFlag = (Environment.GetEnvironmentVariable("SEED") ?? "")
     .Equals("1", StringComparison.OrdinalIgnoreCase)
  || (Environment.GetEnvironmentVariable("SEED") ?? "")
+    .Equals("true", StringComparison.OrdinalIgnoreCase);
+var backfillBehaviorFlag = (Environment.GetEnvironmentVariable("BACKFILL_BEHAVIOR") ?? "")
+    .Equals("1", StringComparison.OrdinalIgnoreCase)
+ || (Environment.GetEnvironmentVariable("BACKFILL_BEHAVIOR") ?? "")
     .Equals("true", StringComparison.OrdinalIgnoreCase);
 if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
@@ -73,7 +70,7 @@ builder.Services.AddSingleton<NpgsqlDataSource>(_ =>
 if (enableS3)
 {
     builder.Services.AddSingleton<IAmazonS3>(_ =>
-        new AmazonS3Client(RegionEndpoint.GetBySystemName(s3Region)));
+        new AmazonS3Client(RegionEndpoint.GetBySystemName(awsRegion)));
 }
 builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
     opt.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
@@ -108,6 +105,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IAiService, BedrockAiService>();
+builder.Services.AddSingleton<ScamRiskService>();
+builder.Services.AddScoped<UserBehaviorProfileService>();
 builder.Services.AddSingleton<IProviderClient, MockBankClient>();
 builder.Services.AddSingleton<ProviderRegistry>();
 builder.Services.AddSingleton<IPaymentGatewayClient, StripeGatewayClient>();
@@ -246,6 +246,9 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     if (isDev || seedFlag)
         await AppDbSeeder.SeedAsync(app.Services);
+    if (backfillBehaviorFlag)
+        await scope.ServiceProvider.GetRequiredService<UserBehaviorProfileService>()
+            .RebuildAllProfilesFromTransactionsAsync(CancellationToken.None);
 }
 app.UseDefaultFiles();
 app.UseStaticFiles();
