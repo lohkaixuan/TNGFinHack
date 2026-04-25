@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = "http://localhost:1060";
+const DEFAULT_API_BASE = "http://fintech-api-iam.eba-wpsitiyp.ap-southeast-1.elasticbeanstalk.com";
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || DEFAULT_API_BASE;
