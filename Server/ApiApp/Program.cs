@@ -211,9 +211,13 @@ else
 builder.Services.AddScoped<ApiApp.Domain.Interfaces.IUserRepository, ApiApp.Infrastructure.Repositories.EfUserRepository>();
 builder.Services.AddScoped<ApiApp.Domain.Interfaces.ITransactionRepository, ApiApp.Infrastructure.Repositories.EfTransactionRepository>();
 builder.Services.AddScoped<ApiApp.Domain.Interfaces.IAccountRepository, ApiApp.Infrastructure.Repositories.EfAccountRepository>();
+builder.Services.AddScoped<ApiApp.Domain.Interfaces.IBudgetRepository, ApiApp.Infrastructure.Repositories.EfBudgetRepository>();
+builder.Services.AddScoped<ApiApp.Domain.Interfaces.IWalletRepository, ApiApp.Infrastructure.Repositories.EfWalletRepository>();
 builder.Services.AddScoped<ApiApp.Domain.Interfaces.ITransactionDomainService, ApiApp.Domain.Services.TransactionDomainService>();
 builder.Services.AddScoped<ApiApp.Application.Services.TransactionApplicationService>();
 builder.Services.AddScoped<ApiApp.Application.Services.AuthApplicationService>();
+builder.Services.AddScoped<ApiApp.Application.Services.BudgetApplicationService>();
+builder.Services.AddScoped<ApiApp.Application.Services.WalletApplicationService>();
 
 var app = builder.Build();
 if (isRender)
@@ -225,6 +229,9 @@ if (isRender)
 }
 if (isRender || !isDev)
     app.UseHttpsRedirection();
+
+// Add global exception handling middleware
+app.UseMiddleware<ApiApp.Infrastructure.Middleware.GlobalExceptionHandlingMiddleware>();
 app.MapGet("/healthz", () => Results.Ok("ok"));
 app.Use(async (ctx, next) =>
 {
