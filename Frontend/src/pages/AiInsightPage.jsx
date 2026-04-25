@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client.js";
-import { Notice, walletIdOf } from "../components/Ui.jsx";
-import { useAuth } from "../state/AuthContext.jsx";
+import { Notice } from "../components/Ui.jsx";
 
 const QUICK_REPLIES = [
   "What are my spending trends?",
@@ -19,7 +18,6 @@ const animationStyle = `
 `;
 
 export default function AiInsightPage() {
-  const auth = useAuth();
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -47,22 +45,23 @@ export default function AiInsightPage() {
     setError("");
 
     try {
-      const walletId = walletIdOf(auth.user);
-      if (!walletId) {
-        setError("Wallet information not available.");
-        setMessages((prev) => prev.slice(0, -1));
-        return;
-      }
-
-      // TODO: Replace with actual AI API endpoint once available
-      const response = await api.aiChat?.({
-        wallet_id: walletId,
-        message: textToSend
+      const response = await api.aiChat({
+        Income: 0,
+        Food: 0,
+        Shopping: 0,
+        Transport: 0,
+        Subscriptions: 0,
+        Budget: 0
       });
 
-      if (response?.reply) {
-        setMessages((prev) => [...prev, { role: "assistant", content: response.reply }]);
-      }
+      const reply = response?.reply || response?.message;
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: reply || "I could not generate an insight right now. Please try again."
+        }
+      ]);
     } catch (err) {
       setError(err.message);
       setMessages((prev) => prev.slice(0, -1));

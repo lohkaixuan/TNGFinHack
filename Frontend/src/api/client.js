@@ -171,6 +171,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data)
     }),
+  aiChat: (data) =>
+    apiRequest("/api/ai/insight", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
   aiTaxRelief: (data) =>
     apiRequest("/api/ai/tax-relief", {
       method: "POST",
