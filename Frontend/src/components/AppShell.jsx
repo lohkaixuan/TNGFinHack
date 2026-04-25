@@ -74,7 +74,7 @@ export default function AppShell() {
             <h1>UniPay</h1>
           </div>
           <button className="icon-button" onClick={() => navigate("/ai-insight")} title="AI Insight">
-            <Icon name="send" />
+            <Icon name="chatbot" />
           </button>
         </header>
         <Outlet />

@@ -21,6 +21,15 @@ export function Icon({ name, size = 22 }) {
     send: <><path d="m22 2-7 20-4-9-9-4z" /><path d="M22 2 11 13" /></>,
     wallet: <><path d="M4 7h16v13H4z" /><path d="M4 7l3-4h11l2 4" /><path d="M16 14h4" /></>,
     key: <><circle cx="8" cy="15" r="4" /><path d="m11 12 8-8M17 6l2 2M15 8l2 2" /></>,
+    chatbot: <>
+      <path d="M7.5 5h9A2.5 2.5 0 0 1 19 7.5v5A2.5 2.5 0 0 1 16.5 15H12l-4 3v-3H7.5A2.5 2.5 0 0 1 5 12.5v-5A2.5 2.5 0 0 1 7.5 5Z" />
+      <path d="M12 3.5V5" />
+      <path d="M12 3.5c0-1 1-1.8 2.2-1.8" />
+      <circle cx="10" cy="9.5" r="0.8" />
+      <circle cx="14" cy="9.5" r="0.8" />
+      <path d="M10.5 12h3" />
+      <path d="M17.5 4.5v1.5M16.75 5.25h1.5M18.5 6.5v1M18 7h1" />
+    </>,
     plus: <><path d="M12 5v14M5 12h14" /></>,
     logout: <><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M21 3v18" /></>
   };
