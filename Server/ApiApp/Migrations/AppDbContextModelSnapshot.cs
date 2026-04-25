@@ -524,6 +524,78 @@ namespace ApiApp.Migrations
                     b.ToTable("transactions", (string)null);
                 });
 
+            modelBuilder.Entity("ApiApp.Models.UserBehaviorProfile", b =>
+                {
+                    b.Property<Guid>("ProfileId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("profile_id");
+
+                    b.Property<decimal>("AvgDailySpend")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("avg_daily_spend");
+
+                    b.Property<decimal>("AvgTransferAmount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("avg_transfer_amount");
+
+                    b.Property<string>("CommonCategoriesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("common_categories_json");
+
+                    b.Property<string>("CommonReceiveFromJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("common_receive_from_json");
+
+                    b.Property<string>("CommonTransferToJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("common_transfer_to_json");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<decimal>("MonthlyBudget")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("monthly_budget");
+
+                    b.Property<int>("RiskScoreBaseline")
+                        .HasColumnType("integer")
+                        .HasColumnName("risk_score_baseline");
+
+                    b.Property<string>("RiskTolerance")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("risk_tolerance");
+
+                    b.Property<int>("SpendCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("spend_count");
+
+                    b.Property<int?>("TypicalTransferHour")
+                        .HasColumnType("integer")
+                        .HasColumnName("typical_transfer_hour");
+
+                    b.Property<int>("TransferCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("transfer_count");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("ProfileId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("user_behavior_profiles", (string)null);
+                });
+
             modelBuilder.Entity("ApiApp.Models.User", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -735,6 +807,17 @@ namespace ApiApp.Migrations
                     b.Navigation("Merchant");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("ApiApp.Models.UserBehaviorProfile", b =>
+                {
+                    b.HasOne("ApiApp.Models.User", "User")
+                        .WithOne()
+                        .HasForeignKey("ApiApp.Models.UserBehaviorProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ApiApp.Models.Wallet", b =>

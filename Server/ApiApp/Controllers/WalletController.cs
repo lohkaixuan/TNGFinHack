@@ -20,19 +20,22 @@ public class WalletController : ControllerBase
     private readonly ICategorizer _cat;
     private readonly ScamRiskService _scamRisk;
     private readonly IAiService _ai;
+    private readonly UserBehaviorProfileService _behavior;
 
     public WalletController(
         AppDbContext db,
         ICategorizer cat,
         ICryptoService crypto,
         ScamRiskService scamRisk,
-        IAiService ai)
+        IAiService ai,
+        UserBehaviorProfileService behavior)
     {
         _db = db;
         _cat = cat;
         _crypto = crypto;
         _scamRisk = scamRisk;
         _ai = ai;
+        _behavior = behavior;
     }
 
     // ---------- helpers ---------
@@ -199,11 +202,14 @@ public class WalletController : ControllerBase
         Wallet to,
         decimal amount,
         string? note,
+        string? category,
         bool confirmRisk,
         CancellationToken ct)
     {
         var receiverName = await GetWalletOwnerLabelAsync(to, ct);
+        var transferToKey = to.wallet_id.ToString();
         var transferCountToday = await CountOutgoingTransfersTodayAsync(from.wallet_id, ct);
+        var behavior = await _behavior.GetContextAsync(from.user_id, ct);
         var isNewReceiver = !await _db.Transactions.AsNoTracking()
             .AnyAsync(t => t.from_wallet_id == from.wallet_id && t.to_wallet_id == to.wallet_id, ct);
 
@@ -212,7 +218,11 @@ public class WalletController : ControllerBase
             receiverName,
             isNewReceiver,
             transferCountToday + 1,
-            note
+            note,
+            transferToKey,
+            category,
+            DateTime.UtcNow.Hour,
+            behavior
         ));
 
         if (risk.Level == "Low")
@@ -234,6 +244,7 @@ public class WalletController : ControllerBase
             Payment:
             Amount: RM{amount}
             Receiver: {receiverName}
+            Category: {category ?? "not provided"}
             Note: {note}
 
             Return:
@@ -620,11 +631,19 @@ public class WalletController : ControllerBase
         if (from is null || to is null) return Results.NotFound("wallet not found");
         if (from.wallet_balance < amt) return Results.BadRequest("insufficient balance");
 
+        Category? finalCat = null;
+        if (!string.IsNullOrWhiteSpace(dto.category_csv) &&
+            CategoryParser.TryParse(dto.category_csv, out var parsed))
+        {
+            finalCat = parsed;
+        }
+
         var scamWarning = await BuildScamWarningAsync(
             from,
             to,
             amt,
             string.Join(" | ", new[] { dto.item, memo }.Where(s => !string.IsNullOrWhiteSpace(s))),
+            finalCat?.ToString(),
             dto.confirm_risk,
             HttpContext.RequestAborted);
 
@@ -650,13 +669,6 @@ public class WalletController : ControllerBase
             currency: "MYR",
             country: "MY"
         ), HttpContext.RequestAborted);
-
-        Category? finalCat = null;
-        if (!string.IsNullOrWhiteSpace(dto.category_csv) &&
-            CategoryParser.TryParse(dto.category_csv, out var parsed))
-        {
-            finalCat = parsed;
-        }
 
         // ---- Persist transaction
         var methodTag = "wallet";
@@ -691,6 +703,19 @@ public class WalletController : ControllerBase
         await tx.CommitAsync();
         await SyncUserBalanceAsync(from.wallet_id);
         await SyncUserBalanceAsync(to.wallet_id);
+        await _behavior.UpdateAfterTransactionAsync(
+            from.user_id,
+            amt,
+            to.wallet_id.ToString(),
+            t.category ?? Category.Other.ToString(),
+            t.transaction_timestamp,
+            true,
+            HttpContext.RequestAborted);
+        await _behavior.UpdateAfterIncomingTransferAsync(
+            to.user_id,
+            from.wallet_id.ToString(),
+            t.transaction_timestamp,
+            HttpContext.RequestAborted);
         return Results.Ok(new
         {
             mode = dto.mode.ToString(),
@@ -725,11 +750,19 @@ public class WalletController : ControllerBase
         if (from is null || to is null) return Results.NotFound("wallet not found");
         if (from.wallet_balance < dto.amount) return Results.BadRequest("insufficient balance");
 
+        Category? finalCat = null;
+        if (!string.IsNullOrWhiteSpace(dto.category_csv) &&
+            CategoryParser.TryParse(dto.category_csv, out var parsed))
+        {
+            finalCat = parsed;
+        }
+
         var scamWarning = await BuildScamWarningAsync(
             from,
             to,
             dto.amount,
             dto.detail,
+            finalCat?.ToString(),
             dto.confirm_risk,
             HttpContext.RequestAborted);
 
@@ -753,13 +786,6 @@ public class WalletController : ControllerBase
             currency: "MYR",
             country: "MY"
         ), HttpContext.RequestAborted);
-
-        Category? finalCat = null;
-        if (!string.IsNullOrWhiteSpace(dto.category_csv) &&
-            CategoryParser.TryParse(dto.category_csv, out var parsed))
-        {
-            finalCat = parsed;
-        }
 
         var t = new Transaction
         {
@@ -786,6 +812,19 @@ public class WalletController : ControllerBase
         await tx.CommitAsync();
         await SyncUserBalanceAsync(from.wallet_id);
         await SyncUserBalanceAsync(to.wallet_id);
+        await _behavior.UpdateAfterTransactionAsync(
+            from.user_id,
+            dto.amount,
+            to.wallet_id.ToString(),
+            t.category ?? Category.Other.ToString(),
+            t.transaction_timestamp,
+            true,
+            HttpContext.RequestAborted);
+        await _behavior.UpdateAfterIncomingTransferAsync(
+            to.user_id,
+            from.wallet_id.ToString(),
+            t.transaction_timestamp,
+            HttpContext.RequestAborted);
         return Results.Ok(new
         {
             from_wallet_id = from.wallet_id,

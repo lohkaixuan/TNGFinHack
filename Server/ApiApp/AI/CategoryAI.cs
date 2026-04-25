@@ -11,7 +11,21 @@ using System.Threading.Tasks;
 namespace ApiApp.AI
 {
     // 1) Domain ---------------------------------------------------------------
-    public enum Category { FB, Transport, Shopping, Bills, Entertainment, Health, Groceries, Other }
+    public enum Category
+    {
+        FoodGroceries,
+        Utilities,
+        Shopping,
+        HousingExpense,
+        Transportation,
+        Healthcare,
+        Entertainments,
+        WorkLearning,
+        Travel,
+        Charity,
+        Subscription,
+        Other
+    }
     public record TxInput(
         string? merchant,
         string? description,
@@ -29,14 +43,24 @@ namespace ApiApp.AI
     {
         private static readonly Dictionary<string, Category> Map = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["fb"] = Category.FB, ["f&b"] = Category.FB, ["food & beverage"] = Category.FB,
-            ["food and beverage"] = Category.FB, ["food"] = Category.FB,
-            ["transport"] = Category.Transport,
+            ["food groceries"] = Category.FoodGroceries, ["food & groceries"] = Category.FoodGroceries,
+            ["food and groceries"] = Category.FoodGroceries, ["groceries"] = Category.FoodGroceries,
+            ["grocery"] = Category.FoodGroceries, ["fb"] = Category.FoodGroceries, ["f&b"] = Category.FoodGroceries,
+            ["food & beverage"] = Category.FoodGroceries, ["food and beverage"] = Category.FoodGroceries,
+            ["food"] = Category.FoodGroceries,
+            ["utilities"] = Category.Utilities, ["utility"] = Category.Utilities, ["bills"] = Category.Utilities,
+            ["housing expense"] = Category.HousingExpense, ["housing"] = Category.HousingExpense,
+            ["rent"] = Category.HousingExpense, ["mortgage"] = Category.HousingExpense,
+            ["transportation"] = Category.Transportation, ["transport"] = Category.Transportation,
             ["shopping"] = Category.Shopping,
-            ["bills"] = Category.Bills, ["utilities"] = Category.Bills,
-            ["entertainment"] = Category.Entertainment,
-            ["health"] = Category.Health, ["healthcare"] = Category.Health,
-            ["groceries"] = Category.Groceries, ["grocery"] = Category.Groceries,
+            ["healthcare"] = Category.Healthcare, ["health"] = Category.Healthcare,
+            ["entertainments"] = Category.Entertainments, ["entertainment"] = Category.Entertainments,
+            ["work learning"] = Category.WorkLearning, ["work & learning"] = Category.WorkLearning,
+            ["work and learning"] = Category.WorkLearning, ["learning"] = Category.WorkLearning,
+            ["education"] = Category.WorkLearning, ["course"] = Category.WorkLearning,
+            ["travel"] = Category.Travel,
+            ["charity"] = Category.Charity, ["donation"] = Category.Charity, ["donations"] = Category.Charity,
+            ["subscription"] = Category.Subscription, ["subscriptions"] = Category.Subscription,
             ["other"] = Category.Other
         };
 
@@ -49,7 +73,15 @@ namespace ApiApp.AI
                               .Replace("_", " ").Replace("-", " ")
                               .Replace("  ", " ");
             key = key.Replace(" and ", " & ");
-            return Map.TryGetValue(key, out cat);
+            if (Map.TryGetValue(key, out cat))
+                return true;
+
+            var enumKey = key.Replace(" ", "").Replace("&", "");
+            if (Enum.TryParse(enumKey, true, out cat))
+                return true;
+
+            cat = Category.Other;
+            return true;
         }
 
         public static Category FromCsv(string? csvValue, Category fallback = Category.Other)
@@ -60,12 +92,17 @@ namespace ApiApp.AI
     {
         private static readonly (Regex re, Category cat)[] Map = new[]
         {
-            (new Regex("mcd|kfc|starbucks|tealive|kopitiam|mamak|foodpanda|grab ?food", RegexOptions.IgnoreCase), Category.FB),
-            (new Regex("petronas|shell|bhp|grab(?!.*food)", RegexOptions.IgnoreCase), Category.Transport),
+            (new Regex("mcd|kfc|starbucks|tealive|kopitiam|mamak|foodpanda|grab ?food|jaya|aeon|tesco|lotus|mydin|giant|mart|grocer", RegexOptions.IgnoreCase), Category.FoodGroceries),
+            (new Regex("tng|touch ?n ?go|maxis|celcom|digi|tm|tenaga|tnb|water|electric|utility|bill", RegexOptions.IgnoreCase), Category.Utilities),
             (new Regex("lazada|shopee|uniqlo|mr ?diy", RegexOptions.IgnoreCase), Category.Shopping),
-            (new Regex("tng|touch ?n ?go|maxis|celcom|digi|tm|tenaga|tnb", RegexOptions.IgnoreCase), Category.Bills),
-            (new Regex("watsons|guardian|clinic|hospital|pharmacy", RegexOptions.IgnoreCase), Category.Health),
-            (new Regex("jaya|aeon|tesco|lotus|mydin|giant", RegexOptions.IgnoreCase), Category.Groceries),
+            (new Regex("rent|mortgage|housing|maintenance|condo", RegexOptions.IgnoreCase), Category.HousingExpense),
+            (new Regex("petronas|shell|bhp|grab(?!.*food)|rapidkl|mrt|lrt|bus|taxi|parking|toll", RegexOptions.IgnoreCase), Category.Transportation),
+            (new Regex("watsons|guardian|clinic|hospital|pharmacy|medical|doctor|dental", RegexOptions.IgnoreCase), Category.Healthcare),
+            (new Regex("netflix|spotify|cinema|movie|game|karaoke|entertain", RegexOptions.IgnoreCase), Category.Entertainments),
+            (new Regex("course|class|book|tuition|udemy|coursera|workshop|stationery", RegexOptions.IgnoreCase), Category.WorkLearning),
+            (new Regex("hotel|flight|airasia|malaysia airlines|travel|booking", RegexOptions.IgnoreCase), Category.Travel),
+            (new Regex("charity|donation|zakat|fitrah", RegexOptions.IgnoreCase), Category.Charity),
+            (new Regex("subscription|monthly plan|renewal|membership", RegexOptions.IgnoreCase), Category.Subscription),
         };
 
         public Task<TxOutput> CategorizeAsync(TxInput tx, CancellationToken ct = default)
@@ -75,7 +112,7 @@ namespace ApiApp.AI
                 if (re.IsMatch(hay)) return Task.FromResult(new TxOutput(cat, 0.85));
 
             if (!string.IsNullOrWhiteSpace(tx.mcc) && tx.mcc.StartsWith("58")) // restaurant MCC
-                return Task.FromResult(new TxOutput(Category.FB, 0.7));
+                return Task.FromResult(new TxOutput(Category.FoodGroceries, 0.7));
 
             return Task.FromResult(new TxOutput(Category.Other, 0.3));
         }

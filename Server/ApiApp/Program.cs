@@ -52,6 +52,10 @@ var seedFlag = (Environment.GetEnvironmentVariable("SEED") ?? "")
     .Equals("1", StringComparison.OrdinalIgnoreCase)
  || (Environment.GetEnvironmentVariable("SEED") ?? "")
     .Equals("true", StringComparison.OrdinalIgnoreCase);
+var backfillBehaviorFlag = (Environment.GetEnvironmentVariable("BACKFILL_BEHAVIOR") ?? "")
+    .Equals("1", StringComparison.OrdinalIgnoreCase)
+ || (Environment.GetEnvironmentVariable("BACKFILL_BEHAVIOR") ?? "")
+    .Equals("true", StringComparison.OrdinalIgnoreCase);
 if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
@@ -103,6 +107,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IAiService, BedrockAiService>();
 builder.Services.AddSingleton<ScamRiskService>();
+builder.Services.AddScoped<UserBehaviorProfileService>();
 builder.Services.AddSingleton<IProviderClient, MockBankClient>();
 builder.Services.AddSingleton<ProviderRegistry>();
 builder.Services.AddSingleton<IPaymentGatewayClient, StripeGatewayClient>();
@@ -241,6 +246,9 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     if (isDev || seedFlag)
         await AppDbSeeder.SeedAsync(app.Services);
+    if (backfillBehaviorFlag)
+        await scope.ServiceProvider.GetRequiredService<UserBehaviorProfileService>()
+            .RebuildAllProfilesFromTransactionsAsync(CancellationToken.None);
 }
 app.UseDefaultFiles();
 app.UseStaticFiles();
