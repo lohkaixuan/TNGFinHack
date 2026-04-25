@@ -152,6 +152,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data)
     }),
+  aiTaxRelief: (data) =>
+    apiRequest("/api/ai/tax-relief", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
   downloadReportUrl: (id) => `${API_BASE_URL}/api/report/${id}/download`,
   merchantDocumentUrl: (merchantId) =>
     `${API_BASE_URL}/api/auth/merchants/${merchantId}/doc`,

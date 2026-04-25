@@ -12,11 +12,12 @@ import ProviderPage from "./pages/ProviderPage.jsx";
 import QrPayPage from "./pages/QrPayPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import ReloadPage from "./pages/ReloadPage.jsx";
-import ReportsPage from "./pages/ReportsPage.jsx";
 import SplashPage from "./pages/SplashPage.jsx";
+import TaxPage from "./pages/TaxPage.jsx";
 import TransactionDetailsPage from "./pages/TransactionDetailsPage.jsx";
 import TransactionsPage from "./pages/TransactionsPage.jsx";
 import TransferPage from "./pages/TransferPage.jsx";
+import AiInsightPage from "./pages/AiInsightPage.jsx";
 
 export default function App() {
   return (
@@ -33,10 +34,11 @@ export default function App() {
           <Route path="/home/spendingDetails" element={<ChartDetailsPage title="Spending Details" />} />
           <Route path="/home/budget-details" element={<BudgetPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/tax" element={<TaxPage />} />
           <Route path="/transactionDetails/:id" element={<TransactionDetailsPage />} />
           <Route path="/pay" element={<QrPayPage />} />
           <Route path="/pay/nfc" element={<TransferPage mode="nfc" />} />
-          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/reports" element={<Navigate to="/transactions" replace />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/account/profile" element={<AccountPage profile />} />
           <Route path="/account/update" element={<AccountPage edit />} />
@@ -47,6 +49,7 @@ export default function App() {
           <Route path="/security-code" element={<TransferPage confirm />} />
           <Route path="/merchant-apply" element={<MerchantApplyPage />} />
           <Route path="/bank/link" element={<BankLinkPage />} />
+          <Route path="/ai-insight" element={<AiInsightPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/provider" element={<ProviderPage />} />
           <Route path="/provider/dashboard" element={<ProviderPage />} />

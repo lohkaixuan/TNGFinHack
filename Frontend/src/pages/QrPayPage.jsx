@@ -64,6 +64,7 @@ export default function QrPayPage() {
             <p className="muted" style={{ fontSize: '12px', marginTop: '4px' }}>{currentWalletId || "No wallet ID"}</p>
           </div>
           {!currentWalletId && <Notice type="info">This account does not have a wallet yet.</Notice>}
+
         </article>
         <form className="panel form-panel" onSubmit={submit}>
           <h3>Pay by wallet ID</h3>
