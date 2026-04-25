@@ -12,7 +12,7 @@ WORKDIR /app
 
 COPY --from=build /app ./
 
-ENV ASPNETCORE_URLS=http://0.0.0.0:1060
-EXPOSE 1060
+ENV ASPNETCORE_URLS=http://0.0.0.0:80
+EXPOSE 80
 
 CMD ["dotnet", "ApiApp.dll"]

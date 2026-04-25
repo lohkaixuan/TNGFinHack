@@ -3,6 +3,7 @@ AWS_REGION ?= ap-southeast-1
 AWS_PROFILE ?= 375590654616_finhack_IsbUsersPS
 ECR_REPOSITORY ?= apiapp
 IMAGE_TAG ?= latest
+DOCKER_PLATFORM ?= linux/amd64
 ECR_IMAGE = $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY):$(IMAGE_TAG)
 AWS = aws --profile $(AWS_PROFILE) --region $(AWS_REGION)
 
@@ -21,7 +22,7 @@ aws-login: aws-check
 	$(AWS) ecr get-login-password | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 
 aws-build:
-	docker build -t $(ECR_REPOSITORY):$(IMAGE_TAG) Server/ApiApp
+	docker build --platform $(DOCKER_PLATFORM) -t $(ECR_REPOSITORY):$(IMAGE_TAG) Server/ApiApp
 
 aws-tag:
 	docker tag $(ECR_REPOSITORY):$(IMAGE_TAG) $(ECR_IMAGE)

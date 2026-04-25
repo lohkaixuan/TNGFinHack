@@ -1,6 +1,4 @@
-﻿using Amazon;
-using Amazon.S3;
-using DotNetEnv;
+﻿using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -19,12 +17,8 @@ Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
             ?? throw new InvalidOperationException("JWT_KEY is not set");
-var neonConn = Environment.GetEnvironmentVariable("NEON_CONN");
-var rdsConn = Environment.GetEnvironmentVariable("RDS_CONN")
-           ?? Environment.GetEnvironmentVariable("AWS_RDS_CONN");
-var dbConn = !string.IsNullOrWhiteSpace(rdsConn)
-    ? rdsConn!
-    : neonConn ?? throw new InvalidOperationException("NEON_CONN or RDS_CONN is not set");
+var dbConn = Environment.GetEnvironmentVariable("NEON_CONN")
+            ?? throw new InvalidOperationException("NEON_CONN is not set");
 var aesKey = Environment.GetEnvironmentVariable("AES_KEY")
             ?? throw new InvalidOperationException("AES_KEY is not set");
 var bedrocktoken = Environment.GetEnvironmentVariable("AWS_BedrockToken");
@@ -35,18 +29,6 @@ var isRender =
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER")) ||
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL")) ||
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_INTERNAL_IP"));
-var isEc2 =
-    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("EC2")) ||
-    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_EXECUTION_ENV"));
-
-var s3Bucket = Environment.GetEnvironmentVariable("S3_BUCKET");
-var awsRegion = builder.Configuration["AWS:Region"] ?? "ap-southeast-1";
-var s3ReportPrefix = Environment.GetEnvironmentVariable("S3_REPORT_PREFIX") ?? "reports/";
-var enableS3 = isEc2 && !string.IsNullOrWhiteSpace(s3Bucket);
-builder.Configuration["S3:Bucket"] = s3Bucket ?? "";
-builder.Configuration["S3:Region"] = awsRegion;
-builder.Configuration["S3:ReportPrefix"] = s3ReportPrefix;
-
 var isDev = builder.Environment.IsDevelopment();
 var seedFlag = (Environment.GetEnvironmentVariable("SEED") ?? "")
     .Equals("1", StringComparison.OrdinalIgnoreCase)
@@ -67,11 +49,6 @@ builder.Services.AddSingleton<NpgsqlDataSource>(_ =>
     var dsb = new NpgsqlDataSourceBuilder(dbConn);
     return dsb.Build();
 });
-if (enableS3)
-{
-    builder.Services.AddSingleton<IAmazonS3>(_ =>
-        new AmazonS3Client(RegionEndpoint.GetBySystemName(awsRegion)));
-}
 builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
     opt.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
 builder.Services.AddControllers()
@@ -119,8 +96,11 @@ builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
     else
         p.WithOrigins(
              "http://localhost:5173",
+             "http://localhost:5174",
              "http://127.0.0.1:5173",
+             "http://127.0.0.1:5174",
              "https://your-frontend.vercel.app",
+             "https://your-hosted-app.example.com",
              "https://yourdomain.com",
              "https://fyp-1-izlh.onrender.com"
           )
@@ -175,10 +155,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
-builder.Services.AddSingleton<IReportRepository>(sp =>
-    new ReportRepository(
-        sp.GetService<IAmazonS3>(),
-        sp.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton<IReportRepository, ReportRepository>();
 builder.Services.AddSingleton<PdfRenderer>();
 builder.Services.AddScoped<ProviderRegistry>();
 builder.Services.AddScoped<MockBankClient>();
@@ -208,6 +185,30 @@ else
 }
 
 var app = builder.Build();
+app.MapGet("/healthz", () => Results.Ok("ok"));
+
+_ = Task.Run(async () =>
+{
+    try
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        if (isDev)
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Database.MigrateAsync();
+        }
+        if (isDev || seedFlag)
+            await AppDbSeeder.SeedAsync(app.Services);
+        if (backfillBehaviorFlag)
+            await scope.ServiceProvider.GetRequiredService<UserBehaviorProfileService>()
+                .RebuildAllProfilesFromTransactionsAsync(CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Database startup task failed.");
+    }
+});
+
 if (isRender)
 {
     app.UseForwardedHeaders(new ForwardedHeadersOptions
@@ -215,9 +216,10 @@ if (isRender)
         ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
     });
 }
-if (isRender || !isDev)
+if (isDev)
+{
     app.UseHttpsRedirection();
-app.MapGet("/healthz", () => Results.Ok("ok"));
+}
 app.Use(async (ctx, next) =>
 {
     try
@@ -240,16 +242,6 @@ app.Use(async (ctx, next) =>
         await ctx.Response.WriteAsJsonAsync(new { ok = false, message = "Server error" });
     }
 });
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
-    if (isDev || seedFlag)
-        await AppDbSeeder.SeedAsync(app.Services);
-    if (backfillBehaviorFlag)
-        await scope.ServiceProvider.GetRequiredService<UserBehaviorProfileService>()
-            .RebuildAllProfilesFromTransactionsAsync(CancellationToken.None);
-}
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseDirectoryBrowser();

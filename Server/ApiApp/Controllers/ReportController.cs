@@ -96,12 +96,9 @@ public class ReportController : ControllerBase
                           ?? "/api/report/pending/download";
             var upsert = await _repo.UpsertReportAndFileAsync(
                 conn, req, chart, pdfBytes, createdBy, tempUrl, ct);
-            var finalUrl = upsert.StoredInS3
-                ? upsert.PdfUrl
-                : Url.Content($"/api/report/{upsert.ReportId}/download")
+            var finalUrl = Url.Content($"/api/report/{upsert.ReportId}/download")
                   ?? $"/api/report/{upsert.ReportId}/download";
-            if (!upsert.StoredInS3 &&
-                !string.Equals(upsert.PdfUrl, finalUrl, StringComparison.Ordinal))
+            if (!string.Equals(upsert.PdfUrl, finalUrl, StringComparison.Ordinal))
             {
                 await _repo.UpdatePdfUrlAsync(conn, upsert.ReportId, finalUrl, ct);
             }
