@@ -112,6 +112,7 @@ builder.Services.AddSingleton<IProviderClient, MockBankClient>();
 builder.Services.AddSingleton<ProviderRegistry>();
 builder.Services.AddSingleton<IPaymentGatewayClient, StripeGatewayClient>();
 builder.Services.AddSingleton<PaymentGatewayRegistry>();
+builder.Services.AddSingleton<Budget>();
 builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
 {
     if (isDev)
