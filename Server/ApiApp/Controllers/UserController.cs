@@ -1,0 +1,441 @@
+﻿// ==================================================
+// Program Name   : UserController.cs
+// Purpose        : API endpoints for user management
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
+using System.Security.Claims;
+using System.Linq;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ApiApp.Models;
+
+namespace ApiApp.Controllers;
+
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly AppDbContext _db;
+    private const string TemporaryPassword = "12345678";
+    public UsersController(AppDbContext db) { _db = db; }
+    public class UpdateUserDto
+    {
+        public string? user_name { get; set; }
+        public string? user_email { get; set; }
+        public string? user_phone_number { get; set; }
+        public int? user_age { get; set; }
+        public string? user_ic_number { get; set; }
+        public Guid? role_id { get; set; }
+        public string? merchant_name { get; set; }
+        public string? merchant_phone_number { get; set; }
+        public string? provider_base_url { get; set; }
+        public bool? provider_enabled { get; set; }
+        public bool? is_deleted { get; set; }
+    }
+
+
+    [HttpGet("me")]
+    public async Task<IResult> Me()
+    {
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (sub is null || !Guid.TryParse(sub, out var uid)) return Results.Unauthorized();
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == uid);
+        if (user is null) return Results.NotFound();
+        var userWallet = await _db.Wallets.FirstOrDefaultAsync(w => w.user_id == uid && w.merchant_id == null);
+        if (userWallet is null)
+        {
+            userWallet = new Wallet
+            {
+                wallet_id = Guid.NewGuid(),
+                user_id = uid,
+                merchant_id = null,
+                wallet_balance = 0m,
+                last_update = DateTime.UtcNow
+            };
+            _db.Wallets.Add(userWallet);
+            await _db.SaveChangesAsync();
+        }
+        Guid? merchantWalletId = null;
+        Wallet? merchantWallet = null;
+        var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == uid);
+        var provider = await _db.Providers.AsNoTracking().FirstOrDefaultAsync(p => p.OwnerUserId == uid);
+        if (merchant is not null)
+        {
+            merchantWallet = await _db.Wallets.FirstOrDefaultAsync(w => w.merchant_id == merchant.MerchantId);
+            if (merchantWallet is null)
+            {
+                merchantWallet = new Wallet
+                {
+                    wallet_id = Guid.NewGuid(),
+                    user_id = null,
+                    merchant_id = merchant.MerchantId,
+                    wallet_balance = 0m,
+                    last_update = DateTime.UtcNow
+                };
+                _db.Wallets.Add(merchantWallet);
+                await _db.SaveChangesAsync();
+            }
+            merchantWalletId = merchantWallet.wallet_id;
+        }
+
+        return Results.Ok(new
+        {
+            user_id = user.UserId,
+            user_name = user.UserName,
+            user_email = user.Email,
+            user_phone_number = user.PhoneNumber,
+            user_balance = user.Balance,
+            last_login = user.LastLogin,
+            wallet_id = userWallet.wallet_id,
+            user_wallet_id = userWallet.wallet_id,
+            user_wallet_balance = userWallet.wallet_balance,
+            merchant_wallet_id = merchantWalletId,
+            merchant_wallet_balance = merchantWallet?.wallet_balance,
+            merchant_id = merchant?.MerchantId,
+            merchant_name = merchant?.MerchantName,
+            merchant_phone_number = merchant?.MerchantPhoneNumber,
+            merchant_doc_url = merchant?.MerchantDocUrl,
+            merchant_doc_content_type = merchant?.MerchantDocContentType,
+            merchant_doc_size = merchant?.MerchantDocSize,
+            owner_user_id = merchant?.OwnerUserId,
+            provider_id = provider?.ProviderId,
+            provider_base_url = provider?.BaseUrl,
+            provider_enabled = provider?.Enabled
+        });
+    }
+
+
+    [HttpGet]
+    public async Task<IResult> List() => Results.Ok(await _db.Users.AsNoTracking().ToListAsync());
+
+
+    [HttpGet("{id:guid}")]
+    public async Task<IResult> Get(Guid id)
+    {
+        var user = await _db.Users.AsNoTracking()
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(x => x.UserId == id);
+        if (user is null) return Results.NotFound();
+        var merchant = await _db.Merchants.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.OwnerUserId == id);
+        var provider = await _db.Providers.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.OwnerUserId == id);
+        return Results.Ok(new
+        {
+            // --- Standard User Fields ---
+            user_id = user.UserId,
+            user_name = user.UserName,
+            user_email = user.Email,
+            user_phone_number = user.PhoneNumber,
+            user_age = user.UserAge,
+            user_ic_number = user.ICNumber,
+            user_balance = user.Balance,
+            last_login = user.LastLogin,
+            is_deleted = user.IsDeleted,
+
+            // --- Merchant Extras ---
+            merchant_id = merchant?.MerchantId,
+            merchant_name = merchant?.MerchantName,
+            merchant_phone_number = merchant?.MerchantPhoneNumber,
+            merchant_doc_url = merchant?.MerchantDocUrl,
+
+            // --- Provider Extras ---
+            provider_id = provider?.ProviderId,
+            provider_base_url = provider?.BaseUrl,
+            provider_enabled = provider?.Enabled,
+
+            role_id = user.RoleId,
+            role_name = user.Role?.RoleName,
+        });
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IResult> Update(Guid id, [FromBody] UpdateUserDto dto)
+    {
+        if (dto is null) return Results.BadRequest(new { message = "Body is required" });
+
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Results.Unauthorized();
+        var target = await _db.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.UserId == id);
+
+        if (target is null) return Results.NotFound();
+
+        var isAdmin = HasRole("admin");
+        if (!isAdmin && actorId != id) return Results.Forbid();
+        if (dto.is_deleted.HasValue)
+        {
+            bool shouldDelete = dto.is_deleted.Value;
+            string roleName = target.Role?.RoleName?.ToLower() ?? "user";
+            bool deleteChanged = false;
+
+            var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
+            var provider = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
+
+            if (shouldDelete)
+            {
+
+                if (roleName == "merchant")
+                {
+                    var userRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == "user");
+                    if (userRole != null && target.RoleId != userRole.RoleId)
+                    {
+                        target.RoleId = userRole.RoleId; 
+                        deleteChanged = true;
+                    }
+                    if (merchant != null && !merchant.IsDeleted)
+                    {
+                        merchant.IsDeleted = true;
+                        deleteChanged = true;
+                    }
+                }
+                else if (merchant != null)
+                {
+                    if (!merchant.IsDeleted)
+                    {
+                        merchant.IsDeleted = true; 
+                        deleteChanged = true;
+                    }
+                }
+                else if (roleName == "provider" || roleName == "thirdparty")
+                {
+                    if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
+                    if (provider != null && provider.Enabled) { provider.Enabled = false; deleteChanged = true; }
+                }
+                else
+                {
+                    if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
+                }
+            }
+            else
+            {
+                if (target.IsDeleted)
+                {
+                    target.IsDeleted = false;
+                    deleteChanged = true;
+                }
+                if (provider != null && !provider.Enabled)
+                {
+                    provider.Enabled = true;
+                    deleteChanged = true;
+                }
+            }
+
+            if (deleteChanged)
+            {
+                target.LastUpdate = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                var msg = shouldDelete ? "Account/Merchant deactivated" : "Account reactivated";
+                return Results.Ok(new { message = msg, user = await GetUserResponse(target.UserId) });
+            }
+            return Results.Ok(new { message = "No changes needed", user = await GetUserResponse(target.UserId) });
+        }
+
+
+        var changed = false;
+        // PART A: UPDATE USER (Owner) INFO
+        if (!string.IsNullOrWhiteSpace(dto.user_name)) { var val = dto.user_name.Trim(); if (target.UserName != val) { target.UserName = val; changed = true; } }
+        if (dto.user_email != null) { var val = dto.user_email.Trim(); if (target.Email != val) { target.Email = val; changed = true; } }
+        if (dto.user_phone_number != null) { var val = dto.user_phone_number.Trim(); if (target.PhoneNumber != val) { target.PhoneNumber = val; changed = true; } }
+        if (dto.user_age.HasValue && target.UserAge != dto.user_age.Value) { target.UserAge = dto.user_age.Value; changed = true; }
+        if (dto.user_ic_number != null && target.ICNumber != dto.user_ic_number) { target.ICNumber = dto.user_ic_number; changed = true; }
+
+        // PART B: UPDATE MERCHANT INFO
+        var merchantForUpdate = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
+        if (merchantForUpdate != null)
+        {
+            if (!string.IsNullOrWhiteSpace(dto.merchant_name)) { var val = dto.merchant_name.Trim(); if (merchantForUpdate.MerchantName != val) { merchantForUpdate.MerchantName = val; changed = true; } }
+            if (dto.merchant_phone_number != null) { var val = dto.merchant_phone_number.Trim(); if (merchantForUpdate.MerchantPhoneNumber != val) { merchantForUpdate.MerchantPhoneNumber = val; changed = true; } }
+        }
+
+        // PART C: UPDATE PROVIDER INFO
+        var providerForUpdate = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
+        if (providerForUpdate != null)
+        {
+            if (providerForUpdate.Name != target.UserName) { providerForUpdate.Name = target.UserName; changed = true; }
+            if (dto.provider_base_url != null) { var val = dto.provider_base_url.Trim(); if (providerForUpdate.BaseUrl != val) { providerForUpdate.BaseUrl = val; changed = true; } }
+            if (dto.provider_enabled.HasValue) { if (providerForUpdate.Enabled != dto.provider_enabled.Value) { providerForUpdate.Enabled = dto.provider_enabled.Value; changed = true; } }
+        }
+
+        if (changed)
+        {
+            target.LastUpdate = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Results.Ok(new { message = "Account updated successfully", user = await GetUserResponse(target.UserId) });
+        }
+        return Results.Ok(new { message = "No changes detected", user = await GetUserResponse(target.UserId) });
+    }
+
+    // Helper method to generate the response object (keeps the main method cleaner)
+    private async Task<object> GetUserResponse(Guid userId)
+    {
+        var user = await _db.Users.AsNoTracking().Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
+        var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == userId);
+        var provider = await _db.Providers.AsNoTracking().FirstOrDefaultAsync(p => p.OwnerUserId == userId);
+
+        return new
+        {
+            user_id = user.UserId,
+            user_name = user.UserName,
+            user_email = user.Email,
+            user_phone_number = user.PhoneNumber,
+            user_age = user.UserAge,
+            user_ic_number = user.ICNumber,
+            role_id = user.RoleId,
+            role_name = user.Role?.RoleName, 
+            is_deleted = user.IsDeleted,     
+            merchant_name = merchant?.MerchantName,
+            merchant_phone_number = merchant?.MerchantPhoneNumber,
+            merchant_is_deleted = merchant?.IsDeleted, 
+            provider_base_url = provider?.BaseUrl,
+            provider_enabled = provider?.Enabled
+        };
+    }
+
+    public sealed class DirectoryAccountDto
+    {
+        public Guid Id { get; set; }            
+        public string Role { get; set; } = "";    
+
+        public string? Name { get; set; }
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+
+        public DateTimeOffset? LastLogin { get; set; }
+        public bool IsDeleted { get; set; }
+
+        public Guid? OwnerUserId { get; set; }    
+        public Guid? MerchantId { get; set; }     
+        public Guid? ProviderId { get; set; }    
+    }
+
+    [HttpGet("directory")]
+    public async Task<IResult> ListDirectory([FromQuery] string? role = null)
+    {
+        if (!CanViewDirectory()) return Results.Forbid();
+        var roleFilter = role?.ToLowerInvariant();
+        var list = new List<DirectoryAccountDto>();
+        // ===================== USERS =====================
+        if (roleFilter is null || roleFilter == "all" || roleFilter == "user")
+        {
+            var users = await _db.Users.AsNoTracking()
+                .Include(u => u.Role)
+                .Where(u => u.Role != null && u.Role.RoleName == "user")
+                .OrderBy(u => u.UserName)
+                .Select(u => new DirectoryAccountDto
+                {
+                    Id = u.UserId,
+                    Role = "user",
+                    Name = u.UserName,
+                    Phone = u.PhoneNumber,
+                    Email = u.Email,
+                    LastLogin = u.LastLogin,
+                    IsDeleted = u.IsDeleted,
+                    OwnerUserId = u.UserId,   
+                    MerchantId = null,
+                    ProviderId = null,
+                })
+                .ToListAsync();
+            list.AddRange(users);
+        }
+
+        // ===================== MERCHANTS =====================
+        if (roleFilter is null || roleFilter == "all" || roleFilter == "merchant")
+        {
+            var merchants = await _db.Merchants.AsNoTracking()
+                .Include(m => m.OwnerUser)
+                .OrderBy(m => m.MerchantName)
+                .Select(m => new DirectoryAccountDto
+                {
+                    Id = m.MerchantId,
+                    Role = "merchant",
+                    Name = m.MerchantName,
+                    Phone = m.MerchantPhoneNumber,
+                    Email = m.OwnerUser != null ? m.OwnerUser.Email : null,
+                    LastLogin = m.OwnerUser != null ? m.OwnerUser.LastLogin : null,
+                    IsDeleted = (m.OwnerUser != null && m.OwnerUser.IsDeleted) || m.IsDeleted,
+                    OwnerUserId = m.OwnerUserId,
+                    MerchantId = m.MerchantId,
+                    ProviderId = null,
+                })
+                .ToListAsync();
+            list.AddRange(merchants);
+        }
+
+        // ===================== PROVIDERS =====================
+        if (roleFilter is null || roleFilter == "all" || roleFilter == "provider" || roleFilter == "thirdparty")
+        {
+            var providersQuery =
+                from p in _db.Providers.AsNoTracking()
+                join u in _db.Users.AsNoTracking()
+                    on p.OwnerUserId equals u.UserId into userGroup
+                from subUser in userGroup.DefaultIfEmpty()
+                orderby p.Name
+                select new DirectoryAccountDto
+                {
+                    Id = p.ProviderId,
+                    Role = "provider",    
+                    Name = p.Name,
+                    Phone = subUser != null ? subUser.PhoneNumber : null,
+                    Email = subUser != null ? subUser.Email : null,
+                    LastLogin = subUser != null ? subUser.LastLogin : null,
+                    IsDeleted = subUser != null && subUser.IsDeleted,
+                    OwnerUserId = p.OwnerUserId,
+                    MerchantId = null,
+                    ProviderId = p.ProviderId,
+                };
+            var providers = await providersQuery.ToListAsync();
+            list.AddRange(providers);
+        }
+        list = list.OrderBy(x => x.Role).ThenBy(x => x.Name).ToList();
+        return Results.Ok(list);
+    }
+
+    [HttpPost("{id:guid}/reset-password")]
+    public async Task<IResult> ResetPassword(Guid id)
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Results.Unauthorized();
+        var isAdmin = HasRole("admin");
+        if (!isAdmin && actorId.Value != id) return Results.Forbid();
+        var target = await _db.Users.FirstOrDefaultAsync(u => u.UserId == id);
+        if (target is null) return Results.NotFound();
+        target.UserPassword = TemporaryPassword;
+        target.LastUpdate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Results.Ok(new { message = $"Password reset to temporary value {TemporaryPassword}" });
+    }
+
+
+    private Guid? GetCurrentUserId()
+    {
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return Guid.TryParse(sub, out var uid) ? uid : null;
+    }
+
+    private bool HasRole(string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName)) return false;
+        var csv = User.FindFirstValue("roles_csv") ?? User.FindFirstValue(ClaimTypes.Role);
+        if (string.IsNullOrWhiteSpace(csv)) return false;
+        return csv.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Any(part => string.Equals(part.Trim(), roleName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool CanViewDirectory() => HasRole("admin") || HasRole("merchant");
+
+    private static string? NormalizeOptional(string? value)
+    {
+        if (value is null) return null;
+        var trimmed = value.Trim();
+        return trimmed.Length == 0 ? null : trimmed;
+    }
+}

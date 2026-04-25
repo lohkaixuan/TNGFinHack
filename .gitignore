@@ -1,0 +1,40 @@
+# React / Frontend
+node_modules/
+dist/
+build/
+*.local
+.env
+.env.local
+.env.*.local
+npm-debug.log
+yarn-error.log
+.DS_Store
+.vscode/
+.idea/
+
+# C# / .NET / Server
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.user
+*.userprefs
+*.suo
+*.sln.docstates
+.vs/
+.vscode/
+launchSettings.json
+appsettings.Development.json
+*.db
+*.sqlite
+*.sqlite3
+publish/
+
+# General
+*.log
+.env
+.env.local
+node_modules/
+.DS_Store
+Thumbs.db
