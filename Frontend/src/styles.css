@@ -441,7 +441,7 @@ input:focus {
 }
 
 .action-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
 
 .stats-grid {
@@ -462,6 +462,12 @@ input:focus {
 .action-tile {
   min-height: 84px;
   color: var(--brand-dark);
+  font-size: 17px;
+}
+
+.action-tile svg {
+  width: 24px;
+  height: 24px;
 }
 
 .stat-card {
@@ -792,9 +798,12 @@ meter {
     padding: 24px 28px 42px;
   }
 
-  .stats-grid,
-  .action-grid {
+  .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .action-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .content-grid.two {
@@ -898,16 +907,35 @@ meter {
     white-space: normal;
   }
 
-  .action-grid,
-  .stats-grid,
   .content-grid.two {
     grid-template-columns: 1fr;
   }
 
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .action-grid {
+    display: flex;
+    gap: 10px;
+    margin: 0 -2px;
+    padding: 0 2px 4px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .action-grid::-webkit-scrollbar {
+    display: none;
+  }
+
   .action-tile {
-    min-height: 64px;
-    justify-content: flex-start;
-    padding: 0 18px;
+    flex: 0 0 128px;
+    min-height: 68px;
+    justify-content: center;
+    padding: 0 12px;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .panel {

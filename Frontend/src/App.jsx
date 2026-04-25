@@ -22,7 +22,8 @@ import AiInsightPage from "./pages/AiInsightPage.jsx";
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/splash" replace />} />
+      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="/index.html" element={<Navigate to="/home" replace />} />
       <Route path="/splash" element={<SplashPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<RegisterPage />} />

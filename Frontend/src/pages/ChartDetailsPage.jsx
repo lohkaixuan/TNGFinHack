@@ -154,7 +154,6 @@ export default function ChartDetailsPage({ home = false, title = "Dashboard" }) 
         <Link className="action-tile" to="/transfer"><Icon name="send" />Transfer</Link>
         <Link className="action-tile" to="/pay"><Icon name="qr" />Pay</Link>
         <Link className="action-tile" to="/bank/link"><Icon name="bank" />Link bank</Link>
-        <Link className="action-tile" to="/account/update"><Icon name="user" />Update profile</Link>
       </div>
 
       <div className="stats-grid">
