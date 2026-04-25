@@ -43,19 +43,25 @@ export default function AppShell() {
   return (
     <div className="app-shell">
       <aside className="side-nav">
-        <button className="brand-button" onClick={() => navigate("/home")}>
-          <img src="/logo.png" alt="" />
+        <button className="brand-button" onClick={() => navigate("/home")} aria-label="Go to home" title="Home">
+          <img src="/backupLogo.png" alt="" />
           <span>UniPay</span>
         </button>
         <nav>
           {items.map(([label, to, icon]) => (
-            <NavLink key={label} to={to} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
+            <NavLink
+              key={label}
+              to={to}
+              aria-label={label}
+              title={label}
+              className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+            >
               <Icon name={icon} />
               <span>{label}</span>
             </NavLink>
           ))}
         </nav>
-        <button className="nav-item logout" onClick={handleLogout}>
+        <button className="nav-item logout" onClick={handleLogout} aria-label="Logout" title="Logout">
           <Icon name="logout" />
           <span>Logout</span>
         </button>
@@ -74,9 +80,14 @@ export default function AppShell() {
         <Outlet />
       </main>
 
-      <nav className="bottom-nav">
+      <nav className="bottom-nav" style={{ "--bottom-nav-columns": items.length }}>
         {items.map(([label, to, icon]) => (
-          <NavLink key={label} to={to} className={({ isActive }) => `bottom-item ${isActive ? "active" : ""}`}>
+          <NavLink
+            key={label}
+            to={to}
+            aria-label={label}
+            className={({ isActive }) => `bottom-item ${isActive ? "active" : ""}`}
+          >
             <Icon name={icon} size={21} />
             <span>{label}</span>
           </NavLink>

@@ -31,7 +31,7 @@ export default function RegisterPage() {
   return (
     <main className="auth-page">
       <section className="auth-visual">
-        <img src="/logo.png" alt="" />
+        <img src="/backupLogo.png" alt="" />
         <h1>Create UniPay</h1>
         <p>Start with a user wallet, then link banks and apply as a merchant from account settings.</p>
       </section>

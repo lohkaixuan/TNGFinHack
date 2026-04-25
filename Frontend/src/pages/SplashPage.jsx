@@ -18,7 +18,7 @@ export default function SplashPage() {
 
   return (
     <main className="splash">
-      <img src="/logo.png" alt="" />
+      <img src="/backupLogo.png" alt="" />
       <h1>UniPay</h1>
       <p>Multi-bank digital wallet</p>
     </main>
