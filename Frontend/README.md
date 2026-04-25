@@ -19,7 +19,7 @@ https://fyp-1-izlh.onrender.com
 For local server development, create `.env`:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:5000
+VITE_API_BASE_URL=http://localhost:1060
 ```
 
 ## Build

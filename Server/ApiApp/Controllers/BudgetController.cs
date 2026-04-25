@@ -36,6 +36,48 @@ public sealed class BudgetController : ControllerBase
         public decimal limitAmount { get; set; }
     }
 
+    public sealed class InsertBudgetDto
+    {
+        public string? category { get; set; }
+        public decimal limitAmount { get; set; }
+    }
+
+    // POST /api/budget/insert
+    [HttpPost("insert")]
+    public async Task<IActionResult> Insert([FromBody] InsertBudgetDto dto)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(dto.category))
+            return BadRequest(new { message = "category is required" });
+
+        var cat = dto.category.Trim().ToLowerInvariant();
+        var cycleStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var cycleEnd = cycleStart.AddMonths(1).AddTicks(-1);
+        
+        var existing = await _db.Budgets.FirstOrDefaultAsync(b =>
+            b.UserId == userId &&
+            b.Category == cat);
+
+        if (existing != null)
+        {
+            return Conflict(new { message = "budget already exists for this category and month" });
+        }
+
+        var newBudget = new Budget
+        {
+            BudgetId = Guid.NewGuid(),
+            UserId = userId,
+            Category = cat,
+            CycleStart = cycleStart,
+            CycleEnd = cycleEnd,
+            LimitAmount = dto.limitAmount,
+        };
+        _db.Budgets.Add(newBudget);
+        await _db.SaveChangesAsync();
+
+        return Ok(newBudget);
+    }
+
     // POST /api/budget/upsert
     [HttpPost("upsert")]
     public async Task<IActionResult> Upsert([FromBody] UpsertBudgetDto dto)

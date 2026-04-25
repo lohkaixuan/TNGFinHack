@@ -1,5 +1,7 @@
 ﻿using System.Reflection;
+using ApiApp.AI;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace ApiApp.Models
 {
@@ -44,6 +46,11 @@ namespace ApiApp.Models
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            var categoryConverter = new ValueConverter<Category?, string?>(
+                category => category == null ? null : category.ToString(),
+                value => string.IsNullOrWhiteSpace(value)
+                    ? null
+                    : CategoryParser.FromCsv(value));
 
             // ===== Table names (safe even if [Table] is present) =====
             modelBuilder.Entity<User>().ToTable("users");
@@ -60,12 +67,12 @@ namespace ApiApp.Models
             // Map AI enums to string columns (no DB enum required)
             modelBuilder.Entity<Transaction>()
                 .Property(t => t.PredictedCategory)
-                .HasConversion<string>()
+                .HasConversion(categoryConverter)
                 .HasMaxLength(50);
 
             modelBuilder.Entity<Transaction>()
                 .Property(t => t.FinalCategory)
-                .HasConversion<string>()
+                .HasConversion(categoryConverter)
                 .HasMaxLength(50);
             // Merchant  OwnerUser (1:1)
             modelBuilder.Entity<Merchant>()
