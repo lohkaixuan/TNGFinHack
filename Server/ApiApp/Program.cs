@@ -38,6 +38,32 @@ var backfillBehaviorFlag = (Environment.GetEnvironmentVariable("BACKFILL_BEHAVIO
     .Equals("1", StringComparison.OrdinalIgnoreCase)
  || (Environment.GetEnvironmentVariable("BACKFILL_BEHAVIOR") ?? "")
     .Equals("true", StringComparison.OrdinalIgnoreCase);
+var frontendOrigins = new[]
+    {
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://localhost",
+        "https://localhost",
+        "capacitor://localhost",
+        "ionic://localhost",
+        "http://localhost:8080",
+        "http://localhost:8100",
+        "http://10.0.2.2:5173",
+        "http://10.0.2.2:8080",
+        "http://10.0.2.2:8100",
+        "file://",
+        "https://your-frontend.vercel.app",
+        "https://your-hosted-app.example.com",
+        "https://yourdomain.com",
+        "https://fyp-1-izlh.onrender.com",
+        "http://47.250.188.93"
+    }
+    .Concat((Environment.GetEnvironmentVariable("FRONTEND_ORIGINS") ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
 if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
@@ -95,16 +121,7 @@ builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
     if (isDev)
         p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
     else
-        p.WithOrigins(
-             "http://localhost:5173",
-             "http://localhost:5174",
-             "http://127.0.0.1:5173",
-             "http://127.0.0.1:5174",
-             "https://your-frontend.vercel.app",
-             "https://your-hosted-app.example.com",
-             "https://yourdomain.com",
-             "https://fyp-1-izlh.onrender.com"
-          )
+        p.WithOrigins(frontendOrigins)
          .AllowAnyHeader()
          .AllowAnyMethod()
          .AllowCredentials();
