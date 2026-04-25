@@ -29,6 +29,19 @@ export function formatCurrency(value) {
   }).format(amount);
 }
 
+export function formatDateTime(value) {
+  if (!value) return "-";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en-MY", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
 export function userIdOf(user) {
   return user?.userId || user?.user_id || "";
 }

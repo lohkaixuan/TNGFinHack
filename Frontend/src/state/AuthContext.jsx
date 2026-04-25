@@ -38,13 +38,19 @@ export function AuthProvider({ children }) {
   async function login(credentials) {
     setStatus("loading");
     setError("");
-    const result = await api.login(credentials);
-    localStorage.setItem("unipay_token", result.token);
-    setToken(result.token);
-    setUser(result.user);
-    setRole(normalizeRole(result.role, result.user));
-    setStatus("ready");
-    return result;
+    try {
+      const result = await api.login(credentials);
+      localStorage.setItem("unipay_token", result.token);
+      setToken(result.token);
+      setUser(result.user);
+      setRole(normalizeRole(result.role, result.user));
+      setStatus("ready");
+      return result;
+    } catch (err) {
+      setStatus("error");
+      setError(err.message || "Login failed.");
+      throw err;
+    }
   }
 
   async function logout() {
