@@ -15,6 +15,9 @@ using ApiApp.Models;
 using ApiApp.AI;                 
 using ApiApp.Helpers;            
 using Category = ApiApp.AI.Category;
+using ApiApp.Application.Services;
+using ApiApp.Application.Commands;
+using ApiApp.Domain.ValueObjects;
 
 namespace ApiApp.Controllers;
 
@@ -32,20 +35,46 @@ public sealed class TransactionsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICategorizer _cat;
-    public TransactionsController(AppDbContext db, ICategorizer cat)
+    private readonly TransactionApplicationService _transactionService;
+
+    public TransactionsController(AppDbContext db, ICategorizer cat, TransactionApplicationService transactionService)
     {
-        _db = db; _cat = cat;
+        _db = db; _cat = cat; _transactionService = transactionService;
     }
 
-    private bool TryGetUserId(out Guid userId)
+    private async Task<IAccount?> FindAccountByIdentifierAsync(string identifier)
     {
-        userId = Guid.Empty;
-        var raw =
-            User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-            User.FindFirstValue("sub") ??
-            User.FindFirstValue("user_id") ??
-            User.FindFirstValue("id");
-        return Guid.TryParse(raw, out userId);
+        return (IAccount?)await _db.BankAccounts
+                .FirstOrDefaultAsync(x => x.BankAccountNumber == identifier)
+            ?? (IAccount?)await _db.Wallets
+                .FirstOrDefaultAsync(x => x.wallet_number == identifier);
+    }
+
+    private static Models.Transaction MapDomainToEf(Domain.Entities.Transaction domainTransaction)
+    {
+        return new Models.Transaction
+        {
+            transaction_id = domainTransaction.Id,
+            transaction_type = domainTransaction.Type,
+            transaction_from = domainTransaction.FromAccount,
+            transaction_to = domainTransaction.ToAccount,
+            transaction_amount = domainTransaction.Amount.Amount,
+            transaction_timestamp = domainTransaction.Timestamp,
+            transaction_item = domainTransaction.Item,
+            transaction_detail = domainTransaction.Detail,
+            category = domainTransaction.Category,
+            payment_method = domainTransaction.PaymentMethod,
+            transaction_status = domainTransaction.Status.ToString().ToLower(),
+            last_update = domainTransaction.LastUpdate,
+            from_user_id = domainTransaction.FromUserId,
+            to_user_id = domainTransaction.ToUserId,
+            from_merchant_id = domainTransaction.FromMerchantId,
+            to_merchant_id = domainTransaction.ToMerchantId,
+            from_bank_id = domainTransaction.FromBankId,
+            to_bank_id = domainTransaction.ToBankId,
+            from_wallet_id = domainTransaction.FromWalletId,
+            to_wallet_id = domainTransaction.ToWalletId
+        };
     }
 
     // --------- moved from CategoryController ---------
@@ -75,30 +104,32 @@ public sealed class TransactionsController : ControllerBase
             if (!TryGetUserId(out var userId))
                 return Unauthorized();
 
-            IAccount? fromAccount =
-                (IAccount?)await _db.BankAccounts
-                    .FirstOrDefaultAsync(x => x.BankAccountNumber == dto.transaction_from, ct)
-                ?? (IAccount?)await _db.Wallets
-                    .FirstOrDefaultAsync(x => x.wallet_number == dto.transaction_from, ct);
+            // Find account IDs from strings
+            var fromAccount = await FindAccountByIdentifierAsync(dto.transaction_from);
+            var toAccount = await FindAccountByIdentifierAsync(dto.transaction_to);
 
             if (fromAccount == null)
                 return BadRequest(new { ok = false, message = "Invalid 'from' account or wallet ID." });
 
-            IAccount? toAccount =
-                (IAccount?)await _db.BankAccounts
-                    .FirstOrDefaultAsync(x => x.BankAccountNumber == dto.transaction_to, ct)
-                ?? (IAccount?)await _db.Wallets
-                    .FirstOrDefaultAsync(x => x.wallet_number == dto.transaction_to, ct);
-
             if (toAccount == null)
                 return BadRequest(new { ok = false, message = "Invalid 'to' account or wallet ID." });
 
-            if (fromAccount.Balance < dto.transaction_amount)
-                return BadRequest(new { ok = false, message = "Insufficient balance." });
+            // Create command
+            var command = new CreateTransactionCommand(
+                dto.transaction_type,
+                fromAccount.Id,
+                toAccount.Id,
+                new Money(dto.transaction_amount),
+                userId,
+                dto.transaction_item,
+                dto.transaction_detail,
+                dto.payment_method
+            );
 
-            fromAccount.Balance -= dto.transaction_amount;
-            toAccount.Balance += dto.transaction_amount;
+            // Execute transaction
+            var transaction = await _transactionService.CreateTransactionAsync(command);
 
+            // Categorize the transaction
             var mlText = string.Join(" | ", new[] { dto.transaction_to, dto.transaction_item, dto.transaction_detail }
                 .Where(s => !string.IsNullOrWhiteSpace(s)));
 
@@ -119,31 +150,29 @@ public sealed class TransactionsController : ControllerBase
             }
 
             var categoryString = (finalCat?.ToString() ?? guess.category.ToString()).ToLowerInvariant();
+            transaction.SetCategory(categoryString);
 
-            var entity = new Transaction
-            {
-                transaction_type = dto.transaction_type,
-                transaction_from = dto.transaction_from,
-                transaction_to = dto.transaction_to,
-                transaction_amount = dto.transaction_amount,
-                transaction_timestamp = dto.transaction_timestamp?.ToUniversalTime() ?? DateTime.UtcNow,
-                transaction_item = dto.transaction_item,
-                transaction_detail = dto.transaction_detail,
-                payment_method = dto.payment_method,
-                transaction_status = "pending",
-                last_update = DateTime.UtcNow,
+            // Update in repository
+            await _transactionService.UpdateTransactionAsync(transaction);
 
-                PredictedCategory = guess.category,
-                PredictedConfidence = guess.confidence,
-                FinalCategory = finalCat,
-                category = categoryString,
-                MlText = mlText,
-                from_user_id = userId
-            };
-            ModelTouch.Touch(entity);
-
-            _db.Add(entity);
-            await _db.SaveChangesAsync(ct);
+            // Convert to EF entity for response (keeping compatibility)
+            var efTransaction = MapDomainToEf(transaction);
+            return Created($"/api/transactions/{transaction.Id}", efTransaction);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { ok = false, message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { ok = false, message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            // Log error
+            return StatusCode(500, new { ok = false, message = "Internal server error" });
+        }
+    }
 
             var ts = entity.transaction_timestamp;
             var budget = await _db.Budgets

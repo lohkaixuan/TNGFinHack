@@ -207,6 +207,14 @@ else
     builder.Services.AddSingleton<ICategorizer, RulesCategorizer>();
 }
 
+// Register DDD services
+builder.Services.AddScoped<ApiApp.Domain.Interfaces.IUserRepository, ApiApp.Infrastructure.Repositories.EfUserRepository>();
+builder.Services.AddScoped<ApiApp.Domain.Interfaces.ITransactionRepository, ApiApp.Infrastructure.Repositories.EfTransactionRepository>();
+builder.Services.AddScoped<ApiApp.Domain.Interfaces.IAccountRepository, ApiApp.Infrastructure.Repositories.EfAccountRepository>();
+builder.Services.AddScoped<ApiApp.Domain.Interfaces.ITransactionDomainService, ApiApp.Domain.Services.TransactionDomainService>();
+builder.Services.AddScoped<ApiApp.Application.Services.TransactionApplicationService>();
+builder.Services.AddScoped<ApiApp.Application.Services.AuthApplicationService>();
+
 var app = builder.Build();
 if (isRender)
 {
