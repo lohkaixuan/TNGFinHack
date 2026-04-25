@@ -41,8 +41,12 @@ export default function TransactionsPage() {
   const auth = useAuth();
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
+  const [reportError, setReportError] = useState("");
+  const [report, setReport] = useState(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const now = new Date();
+  const [reportForm, setReportForm] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
 
   useEffect(() => {
     const walletId = walletIdOf(auth.user);
@@ -69,10 +73,77 @@ export default function TransactionsPage() {
     setToDate("");
   }
 
+  async function generateReport(event) {
+    event.preventDefault();
+    setReportError("");
+
+    const walletId = walletIdOf(auth.user);
+    if (!walletId) {
+      setReport(null);
+      setReportError("Wallet is not available for this user.");
+      return;
+    }
+
+    try {
+      const data = await api.generateMonthlyReport({
+        wallet_id: walletId,
+        year: Number(reportForm.year),
+        month: Number(reportForm.month)
+      });
+      setReport(data);
+    } catch (err) {
+      setReport(null);
+      setReportError(err.message);
+    }
+  }
+
   return (
     <section className="page-stack">
-      <div className="page-title"><h2>Transactions</h2><Link className="primary-button small" to="/transfer">New transfer</Link></div>
+      <div className="page-title">
+        <h2>Transactions</h2>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link className="secondary-button" to="/tax">Tax page</Link>
+          <Link className="primary-button small" to="/transfer">New transfer</Link>
+        </div>
+      </div>
       <Notice type="error">{error}</Notice>
+      
+      <form className="panel form-panel" onSubmit={generateReport}>
+        <div className="page-title"><h3>Financial report</h3></div>
+        <div className="tx-filter-grid">
+          <label>
+            Year
+            <input
+              type="number"
+              value={reportForm.year}
+              onChange={(e) => setReportForm({ ...reportForm, year: e.target.value })}
+            />
+          </label>
+          <label>
+            Month
+            <input
+              type="number"
+              min="1"
+              max="12"
+              value={reportForm.month}
+              onChange={(e) => setReportForm({ ...reportForm, month: e.target.value })}
+            />
+          </label>
+        </div>
+        <Notice type="error">{reportError}</Notice>
+        <button className="primary-button" type="submit">Generate report</button>
+      </form>
+
+      {report && (
+        <article className="panel detail-panel">
+          {Object.entries(report).map(([key, value]) => (
+            <div key={key}>
+              <span>{key}</span>
+              <strong>{String(value ?? "-")}</strong>
+            </div>
+          ))}
+        </article>
+      )}
       <form className="panel form-panel tx-filter-panel" onSubmit={(event) => event.preventDefault()}>
         <div className="tx-filter-grid">
           <label>
@@ -86,6 +157,7 @@ export default function TransactionsPage() {
         </div>
         <button type="button" className="secondary-button" onClick={clearFilter}>Clear filter</button>
       </form>
+
       <article className="panel">
         {filteredItems.length ? (
           <div className="table-list">

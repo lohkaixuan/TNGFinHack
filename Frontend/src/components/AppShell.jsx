@@ -24,8 +24,8 @@ function navForRole(auth) {
   return [
     ["Home", "/home", "home"],
     ["Transactions", "/transactions", "receipt"],
+    ["Tax", "/tax", "chart"],
     ["QR", "/pay", "qr"],
-    ["Reports", "/reports", "chart"],
     ["Account", "/account", "user"]
   ];
 }
@@ -73,8 +73,8 @@ export default function AppShell() {
             <p>{auth.role || "user"}</p>
             <h1>UniPay</h1>
           </div>
-          <button className="icon-button" onClick={() => navigate("/bank/link")} title="Link bank">
-            <Icon name="bank" />
+          <button className="icon-button" onClick={() => navigate("/ai-insight")} title="AI Insight">
+            <Icon name="send" />
           </button>
         </header>
         <Outlet />

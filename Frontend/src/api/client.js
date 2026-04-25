@@ -56,6 +56,21 @@ export const api = {
       })
     }),
 
+  registerPasscode: (passcode) =>
+    apiRequest("/api/auth/passcode/register", {
+      method: "POST",
+      body: JSON.stringify({ passcode })
+    }),
+  changePasscode: ({ currentPasscode, newPasscode }) =>
+    apiRequest("/api/auth/passcode/change", {
+      method: "PUT",
+      body: JSON.stringify({
+        current_passcode: currentPasscode,
+        new_passcode: newPasscode
+      })
+    }),
+  getPasscode: () => apiRequest("/api/auth/passcode"),
+
   logout: () => apiRequest("/api/auth/logout", { method: "POST" }),
   me: () => apiRequest("/api/users/me"),
   users: () => apiRequest("/api/users"),
@@ -149,6 +164,11 @@ export const api = {
 
   generateMonthlyReport: (data) =>
     apiRequest("/api/report/monthly/generate", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
+  aiTaxRelief: (data) =>
+    apiRequest("/api/ai/tax-relief", {
       method: "POST",
       body: JSON.stringify(data)
     }),
