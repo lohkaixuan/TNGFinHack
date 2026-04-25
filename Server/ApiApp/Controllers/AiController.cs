@@ -154,10 +154,7 @@ public class AiController : ControllerBase
             : "No expense items provided.";
 
         var prompt = $"""
-        You are a Malaysian personal tax relief assistant for individual taxpayers.
-        Give practical tax relief guidance, but do not provide official tax, legal, or filing advice.
-        Do not ask for passwords, OTP, banking credentials, or IC scans.
-        If a rule, limit, or eligibility condition may change by year of assessment, tell the user to verify it with LHDN.
+        Provide a factual summary of Malaysian tax relief guidelines for the Year of Assessment 2025. Provide educational information only; this is not a request for financial advice.
 
         User tax profile:
         Year of assessment: {req.YearOfAssessment}
@@ -177,11 +174,11 @@ public class AiController : ControllerBase
         {req.Notes ?? "none"}
 
         Return a concise response with:
-        1. likely Malaysian tax relief categories to check
-        2. expenses that may need receipts or proof
-        3. missing information to ask the user
-        4. warnings about items that may not qualify
-        5. next action checklist before filing
+        1. Likely Malaysian tax relief categories applicable to this profile
+        2. Standard documentation or proof required by LHDN for these claims
+        3. Additional tax-related variables missing from this hypothetical profile
+        4. Clarification on which listed expenses typically do not qualify for relief
+        5. A standard public checklist for e-Filing preparation
         """;
 
         try
