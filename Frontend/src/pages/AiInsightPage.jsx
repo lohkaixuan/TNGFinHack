@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client.js";
+import { Icon } from "../components/Icons.jsx";
 import { Notice } from "../components/Ui.jsx";
 
 const QUICK_REPLIES = [
@@ -16,7 +17,6 @@ const animationStyle = `
     40% { opacity: 1; }
   }
 `;
-
 export default function AiInsightPage() {
   const [messages, setMessages] = useState([
     {
@@ -92,7 +92,20 @@ export default function AiInsightPage() {
           borderRadius: "0 0 16px 16px"
         }}
       >
-        <div className="ai-header-info">
+        <div className="ai-header-info" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 14,
+              display: "grid",
+              placeItems: "center",
+              background: "rgba(255, 255, 255, 0.16)",
+              boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.18)"
+            }}
+          >
+            <Icon name="chatbot" size={22} />
+          </div>
           <div className="ai-header-text">
             <h1 style={{ margin: "0", fontSize: "20px", fontWeight: "600" }}>UniPay AI Assistant</h1>
           </div>
@@ -122,7 +135,21 @@ export default function AiInsightPage() {
               }}
             >
               {msg.role === "assistant" && (
-                <div style={{ fontSize: "28px", marginRight: "8px" }}>🤖</div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    marginRight: "8px",
+                    borderRadius: 12,
+                    display: "grid",
+                    placeItems: "center",
+                    backgroundColor: "#fff",
+                    color: "#1e40af",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.08)"
+                  }}
+                >
+                  <Icon name="chatbot" size={19} />
+                </div>
               )}
               <div
                 className={`ai-bubble-msg ${msg.role}`}
@@ -141,7 +168,21 @@ export default function AiInsightPage() {
                 {msg.content}
               </div>
               {msg.role === "user" && (
-                <div style={{ fontSize: "28px", marginLeft: "8px" }}>👤</div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    marginLeft: "8px",
+                    borderRadius: 12,
+                    display: "grid",
+                    placeItems: "center",
+                    backgroundColor: "#e0e7ff",
+                    color: "#1e40af",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.08)"
+                  }}
+                >
+                  <Icon name="user" size={19} />
+                </div>
               )}
             </div>
           ))}
@@ -154,7 +195,21 @@ export default function AiInsightPage() {
                 marginBottom: "12px"
               }}
             >
-              <div style={{ fontSize: "28px", marginRight: "8px" }}>🤖</div>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  marginRight: "8px",
+                  borderRadius: 12,
+                  display: "grid",
+                  placeItems: "center",
+                  backgroundColor: "#fff",
+                  color: "#1e40af",
+                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.08)"
+                }}
+              >
+                <Icon name="chatbot" size={19} />
+              </div>
               <div
                 style={{
                   padding: "12px 16px",
@@ -287,7 +342,7 @@ export default function AiInsightPage() {
             transition: "all 0.2s"
           }}
         >
-          ✈️
+          ➤
         </button>
       </form>
     </section>

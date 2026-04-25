@@ -303,7 +303,7 @@ export default function AccountPage({ profile, edit, merchant, pin }) {
 
   return (
     <section className="page-stack">
-      <div className="page-title"><h2>{profile ? "Profile" : edit ? "Update profile" : merchant ? "Merchant profile" : pin ? "Change PIN" : "Account"}</h2></div>
+      <div className="page-title"><h2>{profile ? "Profile" : edit ? "Update profile" : merchant ? "Merchant profile" : pin ? "Change Security Pin" : "Account"}</h2></div>
       <div className="stats-grid">
         <StatCard label="Name" value={user?.userName || user?.user_name || "User"} />
         <StatCard label="Role" value={role || "user"} tone="green" />
@@ -317,7 +317,7 @@ export default function AccountPage({ profile, edit, merchant, pin }) {
           <Link className="secondary-button" to="/merchant-apply">Apply merchant</Link>
           <Link className="secondary-button" to="/account/profile">View profile</Link>
           <Link className="secondary-button" to="/account/update">Update profile</Link>
-          <Link className="secondary-button" to="/account/change-pin">Change PIN</Link>
+          <Link className="secondary-button" to="/account/change-pin">Change Security Pin</Link>
           <Link className="secondary-button" to="/bank/link">Link bank</Link>
         </article>
       </section>
