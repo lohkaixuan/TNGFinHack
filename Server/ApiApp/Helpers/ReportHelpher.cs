@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Amazon.S3;
-using Amazon.S3.Model;
 using Dapper;
-using Microsoft.Extensions.Configuration;
 using Npgsql;
 
 // ===== Interface =====
@@ -34,24 +30,12 @@ public interface IReportRepository
         GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct);
 }
 
-public record ReportPersistResult(Guid ReportId, string PdfUrl, bool StoredInS3);
+public record ReportPersistResult(Guid ReportId, string PdfUrl);
 
 // ===== Implementation =====
 public sealed class ReportRepository : IReportRepository
 {
-    private readonly IAmazonS3? _s3;
-    private readonly string? _bucket;
-    private readonly string _prefix;
-    private readonly bool _useS3;
     private const string PdfContentType = "application/pdf";
-
-    public ReportRepository(IAmazonS3? s3, IConfiguration config)
-    {
-        _s3 = s3;
-        _bucket = config["S3:Bucket"];
-        _prefix = (config["S3:ReportPrefix"] ?? "reports/").Trim('/');
-        _useS3 = _s3 is not null && !string.IsNullOrWhiteSpace(_bucket);
-    }
 
     public async Task<MonthlyReportChart> BuildMonthlyChartAsync(
         NpgsqlConnection conn,
@@ -158,17 +142,7 @@ where {where};";
         var chartJson = JsonSerializer.Serialize(chart);
         var newId = Guid.NewGuid();
 
-        var storeInS3 = _useS3;
-        var pdfBytesToPersist = pdf;
         var pdfUrlToPersist = pdfUrl;
-
-        if (storeInS3 && _s3 is not null && !string.IsNullOrWhiteSpace(_bucket))
-        {
-            var key = BuildS3Key(req, createdBy);
-            await UploadToS3Async(_bucket, key, pdf, ct);
-            pdfBytesToPersist = Array.Empty<byte>();
-            pdfUrlToPersist = BuildS3Url(_bucket, key);
-        }
 
         var upsertSql = @"
 insert into reports (
@@ -201,13 +175,13 @@ returning id;";
                     month = new DateTime(req.Month.Year, req.Month.Month, 1),
                     createdBy = createdBy,
                     chartJson = chartJson,
-                    pdf = pdfBytesToPersist,
+                    pdf = pdf,
                     contentType = PdfContentType,
                     pdfUrl = pdfUrlToPersist
                 },
                 cancellationToken: ct));
 
-        return new ReportPersistResult(reportId, pdfUrlToPersist, storeInS3);
+        return new ReportPersistResult(reportId, pdfUrlToPersist);
     }
 
     public async Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?>
@@ -230,18 +204,8 @@ where id = @id";
 
         string contentType = row.content_type ?? PdfContentType;
         byte[] bytes = row.pdf_data is byte[] data ? data : Array.Empty<byte>();
-        string? pdfUrl = row.pdf_url;
         Guid? createdBy = row.created_by is null ? (Guid?)null : (Guid)row.created_by;
         string role = row.role;
-
-        if ((bytes.Length == 0) && _useS3 && _s3 is not null && !string.IsNullOrWhiteSpace(_bucket) && !string.IsNullOrWhiteSpace(pdfUrl))
-        {
-            var key = ExtractKey(pdfUrl);
-            if (!string.IsNullOrWhiteSpace(key))
-            {
-                bytes = await DownloadFromS3Async(_bucket, key!, ct) ?? bytes;
-            }
-        }
 
         if (bytes.Length == 0)
             return null;
@@ -268,44 +232,4 @@ where id = @id;";
                 cancellationToken: ct));
     }
 
-    private string BuildS3Key(MonthlyReportRequest req, Guid? createdBy)
-    {
-        var creatorSegment = createdBy?.ToString() ?? "anonymous";
-        var prefix = string.IsNullOrWhiteSpace(_prefix) ? "reports" : _prefix;
-        return $"{prefix}/{req.Role.ToLowerInvariant()}/{req.Month:yyyy-MM}/{creatorSegment}.pdf";
-    }
-
-    private static string BuildS3Url(string bucket, string key) =>
-        $"https://{bucket}.s3.amazonaws.com/{key}";
-
-    private async Task UploadToS3Async(string bucket, string key, byte[] pdf, CancellationToken ct)
-    {
-        using var ms = new MemoryStream(pdf);
-        var put = new PutObjectRequest
-        {
-            BucketName = bucket,
-            Key = key,
-            InputStream = ms,
-            ContentType = PdfContentType
-        };
-        await _s3!.PutObjectAsync(put, ct);
-    }
-
-    private async Task<byte[]?> DownloadFromS3Async(string bucket, string key, CancellationToken ct)
-    {
-        var res = await _s3!.GetObjectAsync(bucket, key, ct);
-        await using var stream = res.ResponseStream;
-        using var ms = new MemoryStream();
-        await stream.CopyToAsync(ms, ct);
-        return ms.ToArray();
-    }
-
-    private string? ExtractKey(string pdfUrl)
-    {
-        if (string.IsNullOrWhiteSpace(pdfUrl))
-            return null;
-        if (Uri.TryCreate(pdfUrl, UriKind.Absolute, out var uri))
-            return uri.AbsolutePath.TrimStart('/');
-        return pdfUrl.TrimStart('/');
-    }
 }

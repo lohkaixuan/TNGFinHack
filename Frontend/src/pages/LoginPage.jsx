@@ -9,46 +9,89 @@ export default function LoginPage() {
   const location = useLocation();
   const [form, setForm] = useState({ account: "", password: "" });
   const [error, setError] = useState("");
+  const [isEmailLogin, setIsEmailLogin] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function submit(event) {
     event.preventDefault();
     setError("");
+    setIsSubmitting(true);
+
     try {
-      const isEmail = form.account.includes("@");
       const result = await auth.login({
-        email: isEmail ? form.account : null,
-        phone: isEmail ? null : form.account,
+        email: isEmailLogin ? form.account : null,
+        phone: isEmailLogin ? null : form.account,
         password: form.password
       });
-      const role = String(result.role || "").toLowerCase();
+      const role = String(result?.role || "").toLowerCase();
       const fallback = role.includes("admin") ? "/admin" : role.includes("provider") ? "/provider" : "/home";
       navigate(location.state?.from?.pathname || fallback, { replace: true });
     } catch (err) {
       setError(err.message || "Invalid credentials.");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
+  const handleToggle = () => {
+    setIsEmailLogin(!isEmailLogin);
+    setForm({ ...form, account: "" });
+  };
+
   return (
     <main className="auth-page">
-      <section className="auth-visual">
-        <img src="/logo.png" alt="" />
+      <section className="auth-visual" >
+        <span className="auth-logo">
         <h1>UniPay</h1>
-        <p>QR, NFC, transfer, budgets, reports, and linked bank balances in one web app.</p>
+        <p>An integrate function of wallet web app.</p>
+        </span>
       </section>
       <form className="auth-card" onSubmit={submit}>
-        <h2>Login</h2>
+        <h2>Login Your UNIPAY</h2>
         <Notice type="error">{error}</Notice>
+
+        <div className="auth-login-switch">
+          <span className={`auth-login-mode-label ${isEmailLogin ? "active" : ""}`}>
+            Email
+          </span>
+
+          <label className="auth-login-toggle">
+            <input 
+              className="auth-login-toggle-input"
+              type="checkbox" 
+              checked={!isEmailLogin} 
+              onChange={handleToggle} 
+            />
+            <span className={`auth-login-toggle-track ${isEmailLogin ? "" : "phone"}`}>
+              <span className={`auth-login-toggle-thumb ${isEmailLogin ? "" : "phone"}`} />
+            </span>
+          </label>
+
+          <span className={`auth-login-mode-label ${!isEmailLogin ? "active" : ""}`}>
+            Phone
+          </span>
+        </div>
+
         <label>
-          Email or phone
-          <input value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })} required />
+        {isEmailLogin ? "Email Address" : "Phone Number"}
+          <input 
+            type={isEmailLogin ? "email" : "tel"} 
+            placeholder={isEmailLogin ? "example@gmail.com" : "+60 123456789"}
+            value={form.account} 
+            onChange={(e) => setForm({ ...form, account: e.target.value })} 
+            required/>
         </label>
         <label>
           Password
           <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
         </label>
-        <button className="primary-button" disabled={auth.status === "loading"}>
-          {auth.status === "loading" ? "Signing in..." : "Sign in"}
+        
+        {/* 4. USE LOCAL STATE FOR THE BUTTON */}
+        <button className="primary-button" disabled={isSubmitting}>
+          {isSubmitting ? "Signing in..." : "Sign in"}
         </button>
+
+        <h4 className="auth-card-subtitle">Start your UNIPAY journey</h4>
         <Link to="/signup">Create an account</Link>
       </form>
     </main>

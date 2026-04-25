@@ -93,8 +93,8 @@ img {
   padding: 52px;
   color: white;
   background:
+    url("/backupLogo.png") center 42% / 260px no-repeat,
     linear-gradient(rgba(13, 63, 146, 0.84), rgba(13, 63, 146, 0.52)),
-    url("/logo.png") center 42% / 260px no-repeat,
     #1769e0;
   border-radius: 8px;
   box-shadow: var(--shadow);
@@ -197,46 +197,105 @@ input:focus {
 
 .app-shell {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  display: flex;
 }
 
 .side-nav {
   position: sticky;
   top: 0;
   height: 100vh;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   gap: 24px;
-  padding: 24px 16px;
+  padding: 24px 0;
   background: #ffffff;
   border-right: 1px solid var(--line);
+
+  width: 74px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  z-index: 10;
 }
 
-.brand-button {
-  justify-content: flex-start;
-  color: var(--ink);
-  background: transparent;
-  font-size: 20px;
-}
-
-.brand-button img {
-  width: 42px;
-  height: 42px;
+.side-nav:hover,
+.side-nav:focus-within {
+  width: 248px;
 }
 
 .side-nav nav {
   display: grid;
   align-content: start;
   gap: 8px;
+  flex: 1;
 }
 
-.nav-item {
-  justify-content: flex-start;
+.brand-button,
+.nav-item,
+.logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  padding: 0 14px;
-  color: #526173;
+  height: 48px;
+  padding: 0 16px;
   background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.brand-button span,
+.nav-item span,
+.logout span {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  transform: translateX(-8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  margin-left: 12px;
+  font-weight: 600;
+  pointer-events: none
+}
+
+.side-nav:hover .brand-button span,
+.side-nav:hover .nav-item span,
+.side-nav:hover .logout span,
+.side-nav:focus-within .brand-button span,
+.side-nav:focus-within .nav-item span,
+.side-nav:focus-within .logout span {
+  opacity: 1;
+  width: auto;
+  transform: translateX(0);
+}
+
+.brand-button {
+  display: flex;
+  align-items: center;
+  justify-content: center; 
+  width: 100%;
+  height: 48px;
+  padding: 0; 
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.brand-button img {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  margin-left: 20px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.side-nav:hover .brand-button,
+.side-nav:hover .nav-item,
+.side-nav:hover .logout,
+.side-nav:focus-within .brand-button,
+.side-nav:focus-within .nav-item,
+.side-nav:focus-within .logout {
+  justify-content: flex-start;
 }
 
 .nav-item.active,
@@ -250,8 +309,82 @@ input:focus {
 }
 
 .app-main {
+  flex: 1;
   min-width: 0;
   padding: 28px clamp(20px, 4vw, 48px) 48px;
+}
+
+.auth-logo {
+  margin-top: 300px;
+}
+
+.auth-login-switch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 0.2px;
+}
+
+.auth-login-mode-label {
+  color: #aaa;
+  font-weight: 400;
+  transition: 0.3s;
+}
+
+.auth-login-mode-label.active {
+  color: #333;
+  font-weight: 700;
+}
+
+.auth-login-toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.auth-login-toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.auth-login-toggle-track {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #007bff;
+  border-radius: 24px;
+  transition: 0.4s;
+}
+
+.auth-login-toggle-track.phone {
+  background-color: #28a745;
+}
+
+.auth-login-toggle-thumb {
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.4s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.auth-login-toggle-thumb.phone {
+  left: 23px;
+}
+
+.auth-card-subtitle {
+  margin-bottom: 0.1rem;
 }
 
 .top-bar,
@@ -281,12 +414,11 @@ input:focus {
 }
 
 .hero-panel {
-  min-height: 180px;
+  min-height: 150px;
   padding: 28px;
   color: white;
   background:
     linear-gradient(135deg, rgba(13, 63, 146, 0.94), rgba(23, 105, 224, 0.72)),
-    url("/logo.png") right 32px center / 170px no-repeat,
     var(--brand);
   border-radius: 8px;
   box-shadow: var(--shadow);
@@ -397,6 +529,20 @@ input:focus {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
 }
 
+.transaction-row {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) auto minmax(150px, 1fr);
+}
+
+.tx-filter-panel {
+  gap: 12px;
+}
+
+.tx-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .list-row span,
 .table-row span,
 .detail-panel span {
@@ -483,12 +629,14 @@ meter {
 }
 
 @media (min-width: 769px) and (max-width: 1280px) {
-  .app-shell {
-    grid-template-columns: 212px minmax(0, 1fr);
+  .side-nav {
+    width: 72px;
+    padding: 20px 12px;
   }
 
-  .side-nav {
-    padding: 20px 12px;
+  .side-nav:hover,
+  .side-nav:focus-within {
+    width: 212px;
   }
 
   .app-main {
@@ -551,7 +699,7 @@ meter {
     bottom: 0;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--bottom-nav-columns, 5), minmax(0, 1fr));
     min-height: 68px;
     padding: 6px;
     background: white;
@@ -593,7 +741,6 @@ meter {
     padding: 22px;
     background:
       linear-gradient(135deg, rgba(13, 63, 146, 0.94), rgba(23, 105, 224, 0.72)),
-      url("/logo.png") right 18px top 18px / 104px no-repeat,
       var(--brand);
   }
 
@@ -627,6 +774,10 @@ meter {
   .list-row,
   .detail-panel > div,
   .bar-list > div {
+    grid-template-columns: 1fr;
+  }
+
+  .tx-filter-grid {
     grid-template-columns: 1fr;
   }
 

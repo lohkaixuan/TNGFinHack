@@ -8,7 +8,6 @@ public static class AppDbSeeder
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
         // ===== monthly windows (UTC) =====
         var nowUtc = DateTime.UtcNow;
         var startThisUtc = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
