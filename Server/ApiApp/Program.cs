@@ -108,6 +108,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IAiService, BedrockAiService>();
+builder.Services.AddSingleton<ScamRiskService>();
 builder.Services.AddSingleton<IProviderClient, MockBankClient>();
 builder.Services.AddSingleton<ProviderRegistry>();
 builder.Services.AddSingleton<IPaymentGatewayClient, StripeGatewayClient>();
