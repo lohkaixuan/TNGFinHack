@@ -27,7 +27,9 @@ var dbConn = !string.IsNullOrWhiteSpace(rdsConn)
     : neonConn ?? throw new InvalidOperationException("NEON_CONN or RDS_CONN is not set");
 var aesKey = Environment.GetEnvironmentVariable("AES_KEY")
             ?? throw new InvalidOperationException("AES_KEY is not set");
+var bedrocktoken = Environment.GetEnvironmentVariable("AWS_BedrockToken");
 builder.Configuration["Crypto:AesKey"] = aesKey;
+builder.Configuration["AWS:BedrockToken"] = bedrocktoken;
 
 var isRender =
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER")) ||
