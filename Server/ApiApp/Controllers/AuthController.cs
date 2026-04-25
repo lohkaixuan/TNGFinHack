@@ -14,8 +14,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiApp.Models;
 using ApiApp.Helpers; // JwtToken helper
-using ApiApp.Application.Services;
-using ApiApp.Application.Commands;
 
 namespace ApiApp.Controllers;
 
@@ -26,11 +24,10 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IConfiguration _cfg;
     private readonly IWebHostEnvironment _env;
-    private readonly AuthApplicationService _authService;
 
-    public AuthController(AppDbContext db, IConfiguration cfg, IWebHostEnvironment env, AuthApplicationService authService)
+    public AuthController(AppDbContext db, IConfiguration cfg, IWebHostEnvironment env)
     {
-        _db = db; _cfg = cfg; _env = env; _authService = authService;
+        _db = db; _cfg = cfg; _env = env;
     }
 
     private static readonly Guid ROLE_USER = Guid.Parse("11111111-1111-1111-1111-111111111001");
@@ -69,32 +66,36 @@ public class AuthController : ControllerBase
     [HttpPost("register/user")]
     public async Task<IResult> RegisterUser([FromBody] RegisterUserDto dto)
     {
-        try
-        {
-            var command = new RegisterUserCommand(
-                dto.user_name,
-                dto.user_password,
-                dto.user_ic_number,
-                dto.user_email,
-                dto.user_phone_number,
-                dto.user_age
-            );
+        if (string.IsNullOrWhiteSpace(dto.user_name) ||
+            string.IsNullOrWhiteSpace(dto.user_password) ||
+            string.IsNullOrWhiteSpace(dto.user_ic_number))
+            return Results.BadRequest("name, password, ic required");
 
-            var user = await _authService.RegisterUserAsync(command);
+        var dup = await _db.Users.AnyAsync(u =>
+            u.Email == dto.user_email ||
+            u.PhoneNumber == dto.user_phone_number ||
+            u.ICNumber == dto.user_ic_number);
+        if (dup) return Results.BadRequest("duplicate email/phone/ic");
 
-            await EnsureWalletAsync(userId: user.Id);
+        var user = new User
+        {
+            UserId = Guid.NewGuid(),
+            UserName = dto.user_name,
+            UserPassword = dto.user_password, // DEV only plain
+            ICNumber = dto.user_ic_number,
+            Email = string.IsNullOrWhiteSpace(dto.user_email) ? null : dto.user_email,
+            PhoneNumber = string.IsNullOrWhiteSpace(dto.user_phone_number) ? null : dto.user_phone_number,
+            UserAge = dto.user_age,
+            RoleId = ROLE_USER,
+            Balance = 0m,
+            LastUpdate = DateTime.UtcNow
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
 
-            return Results.Created($"/api/users/{user.Id}", new { user_id = user.Id, user_name = user.UserName });
-        }
-        catch (ArgumentException ex)
-        {
-            return Results.BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            // Log error
-            return Results.Problem("Internal server error");
-        }
+        await EnsureWalletAsync(userId: user.UserId);
+
+        return Results.Created($"/api/users/{user.UserId}", new { user_id = user.UserId, user_name = user.UserName });
     }
 
     // REGISTER: MERCHANT APPLY (user must exist; role stays user)
