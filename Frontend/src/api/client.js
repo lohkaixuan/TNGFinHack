@@ -21,12 +21,16 @@ async function parseResponse(response) {
 
   if (!response.ok) {
     const message =
+      (typeof payload === "string" && payload.trim() ? payload : null) ||
       payload?.message ||
       payload?.title ||
       payload?.error ||
       response.statusText ||
       "Request failed";
-    throw new Error(message);
+    const errorObj = new Error(message);
+    errorObj.payload = payload;
+    errorObj.status = response.status;
+    throw errorObj;
   }
 
   return payload;
